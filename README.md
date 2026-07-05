@@ -3,12 +3,17 @@
 **Your AI job agent. Finds, scores, and drafts applications — while you sleep.**
 
 > Scans 130+ company careers pages nightly → scores every role against your resume with an LLM → sends you the top matches on Telegram → drafts a tailored resume + cover letter on demand.
+>
+> 🔒 **Drafts only — never applies.** You review every draft and submit applications yourself. See [PRIVACY.md](PRIVACY.md) for exactly what data leaves your machine.
 
 <p align="center">
   <img src="demo/autopilot-reel.gif?v=3" alt="autopilot-jobhunt demo — nightly scan, LLM scoring, Telegram alert, drafted application" width="300">
 </p>
 
+[![CI](https://github.com/tarunlnmiit/autopilot-jobhunt/actions/workflows/ci.yml/badge.svg)](https://github.com/tarunlnmiit/autopilot-jobhunt/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/tarunlnmiit/autopilot-jobhunt/branch/main/graph/badge.svg)](https://codecov.io/gh/tarunlnmiit/autopilot-jobhunt)
 [![PyPI version](https://img.shields.io/pypi/v/autopilot-jobhunt)](https://pypi.org/project/autopilot-jobhunt/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/autopilot-jobhunt)](https://pypi.org/project/autopilot-jobhunt/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/tarunlnmiit/autopilot-jobhunt?style=social)](https://github.com/tarunlnmiit/autopilot-jobhunt/stargazers)
@@ -134,6 +139,22 @@ autopilot scan
 ```
 
 **For the full walkthrough** — API key setup, Claude Code MCP registration, rate limit details, and troubleshooting — see **[SETUP.md](SETUP.md)**.
+
+### 📚 Documentation
+
+Step-by-step guides live in [`docs/`](docs/README.md):
+
+| Guide | Covers |
+|---|---|
+| [Install](docs/01-install.md) | pip / from source / `autopilot init` scaffolding |
+| [LLM providers](docs/02-providers.md) | OpenRouter fallback chain, Claude CLI (keyless), Anthropic API |
+| [API keys](docs/03-api-keys.md) | TinyFish + OpenRouter keys, where each goes |
+| [Companies & scanning](docs/04-companies-and-scanning.md) | `companies.json`, discovery + scoring, scan pacing |
+| [Integrations](docs/05-integrations.md) | Telegram notifications |
+| [MCP server & Skill](docs/06-mcp-and-skill.md) | Drive the hunt from Claude Code |
+| [Config & scoring](docs/07-config-and-scoring.md) | Candidate profile, `min_score`, `top_n` |
+| [Troubleshooting](docs/08-troubleshooting.md) | Every error we've hit, and the fix |
+| [Testing checklist](docs/09-testing-checklist.md) | Reproducible independent verification |
 
 ### API keys needed
 
