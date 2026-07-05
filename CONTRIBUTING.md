@@ -69,3 +69,7 @@ Open an issue with:
 1. What you ran (`autopilot scan`, `autopilot draft`, etc.)
 2. The error message or unexpected behavior
 3. Your Python version and OS
+
+## Code of Conduct
+
+By participating, you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md).
