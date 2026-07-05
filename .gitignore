@@ -32,6 +32,13 @@ demo/*.mov
 .idea/
 .vscode/
 
+# Tool caches / coverage artifacts
+.coverage
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.serena/
+
 # Claude Code project config
 .claude/
 
