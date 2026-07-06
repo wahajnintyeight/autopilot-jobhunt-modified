@@ -27,9 +27,11 @@ def test_is_ats_listing():
 
 def test_build_candidate_profile():
     cfg = {"candidate": {"name": "Ada", "profile": "ML eng", "seeking": "remote",
-                         "not_suitable": "junior"}}
+                         "not_suitable": "junior",
+                         "included_titles": ["backend engineer", "php developer"]}}
     out = scanner._build_candidate_profile(cfg)
     assert "- Ada" in out and "Seeking: remote" in out and "NOT suitable: junior" in out
+    assert "Included titles: backend engineer, php developer" in out
 
 
 def test_format_telegram_message():

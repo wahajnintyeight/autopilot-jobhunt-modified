@@ -16,12 +16,12 @@
 | `python3 --version` < 3.11 | Python too old | install 3.11+ via [pyenv](https://github.com/pyenv/pyenv) |
 | MCP server not in `claude mcp list` | config not reloaded | open a new terminal / restart Claude Code |
 
-## Cron / MCP + Claude CLI auth
+## Service / MCP + Claude CLI auth
 
-Cron jobs and the MCP server run as background processes and inherit the starting
-shell's environment. If you use `llm_provider: claude_cli`, your `claude` login must be
-active in that same context. Verify with `claude --print "hi"` from the same user/shell
-before scheduling.
+The scheduler service and the MCP server run as background processes and inherit the
+starting shell's environment. If you use `llm_provider: claude_cli`, your `claude`
+login must be active in that same context. Verify with `claude --print "hi"` from the
+same user/shell before starting the service.
 
 ## Still stuck?
 

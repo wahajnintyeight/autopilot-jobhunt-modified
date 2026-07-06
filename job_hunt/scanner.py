@@ -66,6 +66,8 @@ For each job output:
 }}
 
 Scoring: 80-100 near-perfect; 60-79 good fit; 40-59 partial; <40 poor.
+If included titles are provided, only jobs whose title clearly matches one of them should be worth applying.
+Otherwise set score low and worth_applying=false even if the description has some overlap.
 Set worth_applying=true only if score >= {min_score}.
 Include ALL jobs. Output ONLY the JSON array."""
 
@@ -81,6 +83,7 @@ def _build_candidate_profile(config: dict) -> str:
     profile = cand.get("profile", "")
     seeking = cand.get("seeking", "")
     not_suitable = cand.get("not_suitable", "")
+    included_titles = cand.get("included_titles", [])
 
     lines = [f"- {name}"]
     if profile:
@@ -89,6 +92,8 @@ def _build_candidate_profile(config: dict) -> str:
         lines.append(f"- Seeking: {seeking}")
     if not_suitable:
         lines.append(f"- NOT suitable: {not_suitable}")
+    if included_titles:
+        lines.append("- Included titles: " + ", ".join(included_titles))
     return "\n".join(lines)
 
 
@@ -304,6 +309,23 @@ def format_telegram_message(top_jobs: list[dict], date_str: str) -> str:
     return "\n".join(lines)
 
 
+def format_discord_message(jobs: list[dict], date_str: str) -> str:
+    lines = [f"**Job Hunt - {date_str}**", f"*{len(jobs)} scored match(es)*", ""]
+    for i, job in enumerate(jobs, 1):
+        lines.extend(
+            [
+                f"**#{i}** | {job['company']} | {job.get('extracted_title', job['title'])}",
+                f"Score: {job.get('score', '?')}/100",
+                f"Location: {job.get('location_remote', job['location'])}",
+                f"Stack: {job.get('stack', 'N/A')}",
+                f"Reason: {job.get('reason', '')}",
+                f"[Apply]({job['url']})",
+                "",
+            ]
+        )
+    return "\n".join(lines).strip()
+
+
 def _export_to_csv(jobs: list[dict], label: str) -> Path:
     date_str = datetime.now().strftime("%Y-%m-%d")
     out_path = Path("output") / f"jobs_{date_str}.csv"
@@ -376,6 +398,9 @@ def run_scan(config: dict, companies: list[dict]) -> None:
 
     min_score = config.get("candidate", {}).get("min_score", 55)
     top_n = config.get("candidate", {}).get("top_n", 5)
+    discord = config.get("discord", {})
+    discord_webhook = discord.get("webhook_url")
+    discord_configured = bool(discord_webhook)
 
     state = load_state()
     seen_urls: set = set(state.get("seen_urls", []))
@@ -424,6 +449,18 @@ def run_scan(config: dict, companies: list[dict]) -> None:
                 companies_with_jobs += 1
                 titles = [j.get("extracted_title") or j.get("title", "?") for j in scored[:3]]
                 logger.info(f"  {len(scored)} job(s) saved: {', '.join(titles)}{' ...' if len(scored) > 3 else ''}")
+                discord_jobs = sorted(
+                    [j for j in scored if j.get("score", 0) >= min_score],
+                    key=lambda x: x.get("score", 0),
+                    reverse=True,
+                )[:top_n]
+                if discord_configured and discord_jobs:
+                    date_str = datetime.now().strftime("%d %b %Y")
+                    sent = send_discord(discord_webhook, format_discord_message(discord_jobs, date_str))
+                    if sent:
+                        logger.info("  Discord notification sent for scored jobs.")
+                    else:
+                        logger.warning("  Discord send failed for scored jobs.")
 
             companies_scanned += 1
 
@@ -478,9 +515,6 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     date_str = datetime.now().strftime("%d %b %Y")
     tg = config.get("telegram", {})
     telegram_configured = bool(tg.get("token") and tg.get("chat_id"))
-    discord = config.get("discord", {})
-    discord_webhook = discord.get("webhook_url")
-    discord_configured = bool(discord_webhook)
 
     # Always persist results to CSV when there are scored jobs ? this is the
     # durable record regardless of whether Telegram or Discord is configured.
@@ -489,42 +523,16 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     if errors and telegram_configured:
         error_msg = f"<b>Job Hunt Errors ? {date_str}</b>\n" + "\n".join(errors)
         send_telegram(tg["token"], tg["chat_id"], error_msg)
-    if errors and discord_configured:
-        error_msg = f"Job Hunt Errors - {date_str}\n" + "\n".join(errors)
-        send_discord(discord_webhook, error_msg)
 
     if not top_jobs:
         logger.info("No matching jobs found today.")
         if telegram_configured:
             msg = f"<b>Job Hunt ? {date_str}</b>\nNo new matches today."
             send_telegram(tg["token"], tg["chat_id"], msg)
-        if discord_configured:
-            send_discord(discord_webhook, f"**Job Hunt - {date_str}**\nNo new matches today.")
         return
 
     msg = format_telegram_message(top_jobs, date_str)
     logger.info("\n" + msg)
-    discord_msg = "\n".join(
-        [
-            f"**Job Hunt - {date_str}**",
-            f"*{len(top_jobs)} matches found*",
-            "",
-            *[
-                "\n".join(
-                    [
-                        f"**#{i}** | {job['company']} | {job.get('extracted_title', job['title'])}",
-                        f"?? {job.get('location_remote', job['location'])}",
-                        f"?? {job.get('stack', 'N/A')}",
-                        f"? {job.get('reason', '')}",
-                        f"[Apply]({job['url']})",
-                        "",
-                    ]
-                )
-                for i, job in enumerate(top_jobs, 1)
-            ],
-            'Reply "apply to #N" to draft application.',
-        ]
-    )
 
     # Telegram is an optional notification on top of the CSV. When it's not
     # configured we simply skip it ? no error, the CSV already holds the results.
@@ -537,13 +545,3 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     else:
         logger.info(f"Telegram not configured ? results saved to CSV: {csv_path}")
         logger.info("Add telegram.token and telegram.chat_id to config.json to enable notifications.")
-
-    if discord_configured:
-        sent = send_discord(discord_webhook, discord_msg)
-        if sent:
-            logger.info(f"Discord notification sent. Results also saved to CSV: {csv_path}")
-        else:
-            logger.warning(f"Discord send failed ? results saved to CSV: {csv_path}")
-    else:
-        logger.info(f"Discord not configured ? results saved to CSV: {csv_path}")
-        logger.info("Add discord.webhook_url to config.json to enable Discord notifications.")

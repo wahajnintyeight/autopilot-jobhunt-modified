@@ -45,7 +45,8 @@ faster.
 
 The scanner deliberately sleeps between fetches/searches to stay within TinyFish's free
 throughput (~5 searches/min, ~25 fetches/min). This is **expected**, not a hang. Run it
-nightly via cron (`bash setup_cron.sh`) and read results in the morning.
+through `autopilot service` and read results in the morning. `autopilot scan` still
+works for manual runs.
 
 - **"No new job URLs found"** — TinyFish returned nothing matching the query for that
   company today. Not an error.

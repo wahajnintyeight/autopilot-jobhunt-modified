@@ -35,6 +35,22 @@ def test_scan_dispatch(monkeypatch):
     assert ran["cfg"] == {"c": 1} and ran["co"] == ["co"]
 
 
+def test_service_dispatch(monkeypatch):
+    ran = {}
+    monkeypatch.setattr("job_hunt.service.run_service", lambda: ran.setdefault("ok", True))
+    _argv(monkeypatch, "service")
+    main.main()
+    assert ran["ok"]
+
+
+def test_logs_dispatch(monkeypatch):
+    seen = {}
+    monkeypatch.setattr("job_hunt.log_tail.tail_file", lambda path: seen.update(path=path))
+    _argv(monkeypatch, "logs")
+    main.main()
+    assert seen["path"] == "scan.log"
+
+
 def test_draft_dispatch(monkeypatch):
     monkeypatch.setattr(main, "load_config", lambda: {})
     got = {}

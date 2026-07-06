@@ -84,3 +84,48 @@ def test_discord_configured_saves_csv_and_notifies(scan_env):
     assert len(rows) == 1
     assert len(calls) == 1
     assert calls[0][0] == "https://discord.com/api/webhooks/x/y"
+
+
+def test_discord_notifies_after_each_company_scores(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    resume = tmp_path / "resume.md"
+    resume.write_text("Senior backend engineer.")
+    events = []
+
+    monkeypatch.setattr(scanner, "TinyFish", lambda **_: object())
+
+    def discover(tf, company, seen):
+        events.append(f"discover:{company['name']}")
+        return [
+            {"url": f"https://x.co/{company['name']}", "title": "Engineer",
+             "company": company["name"], "location": "Remote", "region": "Remote"},
+        ]
+
+    def score(jobs, resume_text, config):
+        company = jobs[0]["company"]
+        events.append(f"score:{company}")
+        return [{**jobs[0], "score": 90, "extracted_title": "Engineer", "reason": "fit"}]
+
+    monkeypatch.setattr(scanner, "discover_job_urls", discover)
+    monkeypatch.setattr(scanner, "fetch_job_details", lambda tf, jobs: jobs)
+    monkeypatch.setattr(scanner, "score_jobs", score)
+    monkeypatch.setattr(scanner, "send_discord",
+                        lambda webhook, msg: events.append(f"discord:{msg}") or True)
+
+    config = {
+        "tinyfish_api_key": "sk-x",
+        "scan_seed": 1,
+        "candidate": {"name": "Ada", "resume_path": str(resume), "min_score": 60, "top_n": 5},
+        "discord": {"webhook_url": "https://discord.com/api/webhooks/x/y"},
+    }
+    companies = [
+        {"name": "Acme", "careers_url": "https://a.co", "search_domain": "a.co",
+         "location": "Remote", "region": "Remote"},
+        {"name": "Beta", "careers_url": "https://b.co", "search_domain": "b.co",
+         "location": "Remote", "region": "Remote"},
+    ]
+
+    scanner.run_scan(config, companies)
+
+    assert events.index("score:Beta") < next(i for i, e in enumerate(events) if e.startswith("discord:"))
+    assert next(i for i, e in enumerate(events) if e.startswith("discord:")) < events.index("discover:Acme")

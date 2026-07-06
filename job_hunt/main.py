@@ -259,6 +259,16 @@ def main() -> None:
         mcp.run()
         return
 
+    if cmd == "service":
+        from job_hunt.service import run_service
+        run_service()
+        return
+
+    if cmd == "logs":
+        from job_hunt.log_tail import tail_file
+        tail_file(os.getenv("AUTOPILOT_LOG_FILE", "scan.log"))
+        return
+
     # export reads local scan state only — no API keys needed, so skip load_config()
     if cmd == "export":
         min_score, days = _parse_export_args(sys.argv)
@@ -278,7 +288,7 @@ def main() -> None:
         draft_application(config, sys.argv[2])
 
     else:
-        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | draft | export | mcp")
+        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | service | logs | draft | export | mcp")
 
 
 if __name__ == "__main__":

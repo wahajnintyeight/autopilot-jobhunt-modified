@@ -21,6 +21,7 @@ classifiers = [
     "Topic :: Office/Business",
 ]
 dependencies = [
+    "apscheduler>=3.10",
     "tinyfish>=0.2.5",
     "openai>=2.0.0",
     "python-dotenv>=1.0.0",
