@@ -50,3 +50,32 @@ def test_send_whatsapp_http_error(monkeypatch):
 def test_send_whatsapp_exception(monkeypatch):
     monkeypatch.setattr(notifier.requests, "get", lambda *a, **k: (_ for _ in ()).throw(OSError("x")))
     assert notifier.send_whatsapp("123", "key", "hi") is False
+
+
+def test_send_discord_success(monkeypatch, capsys):
+    seen = {}
+
+    def fake_post(url, json=None, timeout=None):
+        seen["url"] = url
+        seen["json"] = json
+        return _Resp(204)
+
+    monkeypatch.setattr(notifier.requests, "post", fake_post)
+    assert notifier.send_discord("https://discord.com/api/webhooks/abc", "hi") is True
+    assert seen["url"] == "https://discord.com/api/webhooks/abc"
+    assert seen["json"]["content"] == "hi"
+    assert seen["json"]["allowed_mentions"]["parse"] == []
+    assert "Discord sent." in capsys.readouterr().out
+
+
+def test_send_discord_http_error(monkeypatch):
+    monkeypatch.setattr(notifier.requests, "post", lambda *a, **k: _Resp(400, "bad"))
+    assert notifier.send_discord("https://discord.com/api/webhooks/abc", "hi") is False
+
+
+def test_send_discord_exception(monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(notifier.requests, "post", boom)
+    assert notifier.send_discord("https://discord.com/api/webhooks/abc", "hi") is False

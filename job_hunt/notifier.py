@@ -32,3 +32,20 @@ def send_telegram(bot_token: str, chat_id: str, message: str) -> bool:
     except Exception as e:
         print(f"Telegram error: {e}")
         return False
+
+
+def send_discord(webhook_url: str, message: str) -> bool:
+    payload: dict[str, Any] = {
+        "content": message,
+        "allowed_mentions": {"parse": []},
+    }
+    try:
+        resp = requests.post(webhook_url, json=payload, timeout=15)
+        if 200 <= resp.status_code < 300:
+            print("Discord sent.")
+            return True
+        print(f"Discord failed: HTTP {resp.status_code} — {resp.text[:200]}")
+        return False
+    except Exception as e:
+        print(f"Discord error: {e}")
+        return False

@@ -32,6 +32,8 @@ def scan_env(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(scanner, "send_telegram",
                         lambda token, chat, msg: calls.append((token, chat, msg)) or True)
+    monkeypatch.setattr(scanner, "send_discord",
+                        lambda webhook, msg: calls.append((webhook, msg)) or True)
 
     base_config = {
         "tinyfish_api_key": "sk-x",
@@ -70,3 +72,15 @@ def test_telegram_configured_saves_csv_and_notifies(scan_env):
     assert len(rows) == 1                  # CSV still written
     assert len(calls) == 1                 # AND Telegram sent
     assert calls[0][0] == "bot-token"
+
+
+def test_discord_configured_saves_csv_and_notifies(scan_env):
+    tmp_path, config, companies, calls = scan_env
+    config = {**config, "discord": {"webhook_url": "https://discord.com/api/webhooks/x/y"}}
+
+    scanner.run_scan(config, companies)
+
+    rows = _read_csv(tmp_path)
+    assert len(rows) == 1
+    assert len(calls) == 1
+    assert calls[0][0] == "https://discord.com/api/webhooks/x/y"

@@ -149,8 +149,10 @@ def test_load_config_telegram_and_candidate_env(tmp_path, monkeypatch, clean_env
     monkeypatch.setenv("MIN_SCORE", "70")
     monkeypatch.setenv("TOP_N", "3")
     monkeypatch.setenv("OPENROUTER_FALLBACK_MODELS", "a/b:free, c/d:free")
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/x/y")
     cfg = main.load_config()
     assert cfg["telegram"] == {"token": "tok", "chat_id": "42"}
+    assert cfg["discord"] == {"webhook_url": "https://discord.com/api/webhooks/x/y"}
     assert cfg["candidate"]["name"] == "Ada"
     assert cfg["candidate"]["min_score"] == 70 and cfg["candidate"]["top_n"] == 3
     assert cfg["openrouter_fallback_models"] == ["a/b:free", "c/d:free"]

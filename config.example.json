@@ -15,6 +15,9 @@
     "token": "YOUR_TELEGRAM_BOT_TOKEN",
     "chat_id": "YOUR_TELEGRAM_CHAT_ID"
   },
+  "discord": {
+    "webhook_url": "YOUR_DISCORD_WEBHOOK_URL"
+  },
   "candidate": {
     "name": "Your Name",
     "resume_path": "resume/YOUR_RESUME.md",
