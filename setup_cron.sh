@@ -1,13 +1,16 @@
 #!/bin/bash
-# Sets up a daily cron job to run the job scan automatically.
+# Sets up a cron job to run the job scan automatically.
 # Usage: bash setup_cron.sh
 #
 # Customize these variables before running:
+set -euo pipefail
+
 PYTHON="${AUTOPILOT_PYTHON:-$(which python3)}"
-CRON_TIME="${AUTOPILOT_CRON:-30 2 * * *}"  # Default: 2:30 AM local time
+CRON_TIME="${AUTOPILOT_CRON:-0 */6 * * *}"  # Default: every 6 hours
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG="$PROJECT_DIR/scan.log"
+LOG_DIR="$PROJECT_DIR/logs"
+LOG="$LOG_DIR/scan.log"
 
 if [ ! -f "$PYTHON" ] && ! command -v "$PYTHON" &>/dev/null; then
     echo "Error: Python not found at '$PYTHON'"
@@ -15,14 +18,17 @@ if [ ! -f "$PYTHON" ] && ! command -v "$PYTHON" &>/dev/null; then
     exit 1
 fi
 
-CRON_LINE="$CRON_TIME cd \"$PROJECT_DIR\" && \"$PYTHON\" -m job_hunt.main scan >> \"$LOG\" 2>&1"
+mkdir -p "$LOG_DIR"
 
-(crontab -l 2>/dev/null | grep -qF "job_hunt.main scan") && {
-    echo "Cron job already set up."
-    exit 0
-}
+CRON_LINE="$CRON_TIME cd \"$PROJECT_DIR\" && AUTOPILOT_LOG_FILE=\"$LOG\" AUTOPILOT_CONSOLE_LOG=0 \"$PYTHON\" -m job_hunt.main scan >> \"$LOG\" 2>&1"
 
-(crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+TMP_CRON="$(mktemp)"
+trap 'rm -f "$TMP_CRON"' EXIT
+
+crontab -l 2>/dev/null | grep -vF "job_hunt.main scan" > "$TMP_CRON" || true
+echo "$CRON_LINE" >> "$TMP_CRON"
+crontab "$TMP_CRON"
+
 echo "Cron job added: $CRON_TIME"
 echo "Python: $PYTHON"
 echo "Logs: $LOG"
