@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PYTHON="${AUTOPILOT_PYTHON:-$(which python3)}"
-CRON_TIME="${AUTOPILOT_CRON:-0 */6 * * *}"  # Default: every 6 hours
+CRON_TIME="${AUTOPILOT_CRON:-0 2,5,9,10,12,17 * * *}"  # Default: server time for 12am, 5am, 8am, 1pm, 3pm, 8pm in UTC+5
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$PROJECT_DIR/logs"

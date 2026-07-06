@@ -505,16 +505,16 @@ After registration, these prompts work in any Claude Code session:
 ## Step 10 — Automate with cron (optional)
 
 <details>
-<summary>Run autopilot scan every 6 hours automatically — click to expand</summary>
+<summary>Run autopilot scan six times per day automatically — click to expand</summary>
 
 ```bash
 bash setup_cron.sh
 ```
 
-This adds a cron job that runs `autopilot scan` every 6 hours and appends logs to `logs/scan.log`.
+This adds a cron job that runs `autopilot scan` at 2am, 5am, 9am, 10am, 12pm, and 5pm server time, which matches 12am, 5am, 8am, 1pm, 3pm, and 8pm in UTC+5, and appends logs to `logs/scan.log`.
 
 > [!TIP]
-> Running every 6 hours gives you fresher matches, but uses more LLM calls than the
+> Running six times per day gives you fresher matches, but uses more LLM calls than the
 > previous nightly cadence. If you hit free-tier limits, set a slower schedule with
 > `AUTOPILOT_CRON`.
 
