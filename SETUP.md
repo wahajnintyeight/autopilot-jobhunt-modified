@@ -505,18 +505,18 @@ After registration, these prompts work in any Claude Code session:
 ## Step 10 — Automate with cron (optional)
 
 <details>
-<summary>Run autopilot scan every night automatically — click to expand</summary>
+<summary>Run autopilot scan six times per day automatically — click to expand</summary>
 
 ```bash
 bash setup_cron.sh
 ```
 
-This adds a cron job that runs `autopilot scan` every day at 2:30 AM local time and saves logs to `scan.log`.
+This adds a cron job that runs `autopilot scan` at 2am, 5am, 9am, 10am, 12pm, and 5pm server time, which matches 12am, 5am, 8am, 1pm, 3pm, and 8pm in UTC+5, and appends logs to `logs/scan.log`.
 
 > [!TIP]
-> Running once per day is the recommended cadence. It keeps you within OpenRouter's
-> per-model daily quotas and ensures you see new postings the morning after they appear.
-> Running the scan multiple times per day risks exhausting free-tier LLM limits.
+> Running six times per day gives you fresher matches, but uses more LLM calls than the
+> previous nightly cadence. If you hit free-tier limits, set a slower schedule with
+> `AUTOPILOT_CRON`.
 
 To remove the cron job:
 ```bash

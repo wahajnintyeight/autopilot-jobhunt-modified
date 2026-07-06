@@ -18,14 +18,16 @@ def get_logger(name: str = "autopilot") -> logging.Logger:
 
     # Console level is INFO by default; set LOG_LEVEL=DEBUG for full per-URL/per-job
     # detail on stdout (the scan.log file always captures DEBUG regardless).
-    console_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(console_level)
-    console.setFormatter(fmt)
-    logger.addHandler(console)
+    if os.getenv("AUTOPILOT_CONSOLE_LOG", "1") != "0":
+        console_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+        console = logging.StreamHandler(sys.stdout)
+        console.setLevel(console_level)
+        console.setFormatter(fmt)
+        logger.addHandler(console)
 
     try:
-        log_path = Path("scan.log")
+        log_path = Path(os.getenv("AUTOPILOT_LOG_FILE", "scan.log"))
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(log_path, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(fmt)
