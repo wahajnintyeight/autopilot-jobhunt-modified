@@ -63,3 +63,16 @@ def test_anthropic_key_bridged_from_env(workdir, monkeypatch):
     cfg = main.load_config()
 
     assert cfg["anthropic_api_key"] == "sk-ant-real"
+
+
+def test_deepseek_and_hf_env_bridged(workdir, monkeypatch):
+    _write_config(workdir)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-ds-real")
+    monkeypatch.setenv("HUGGINGFACEHUB_API_TOKEN", "hf_real_token")
+    monkeypatch.setenv("HUGGINGFACE_MODEL", "meta-llama/Llama-3.1-70B-Instruct")
+
+    cfg = main.load_config()
+
+    assert cfg["deepseek_api_key"] == "sk-ds-real"
+    assert cfg["huggingface_api_key"] == "hf_real_token"
+    assert cfg["huggingface_model"] == "meta-llama/Llama-3.1-70B-Instruct"

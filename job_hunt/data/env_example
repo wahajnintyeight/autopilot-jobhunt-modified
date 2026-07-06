@@ -1,18 +1,30 @@
-# TinyFish API — get yours at https://agent.tinyfish.ai
+# TinyFish API - get yours at https://agent.tinyfish.ai
 TINYFISH_API_KEY="your_tinyfish_api_key_here"
 
-# OpenRouter API — free tier available at https://openrouter.ai
+# OpenRouter API - free tier available at https://openrouter.ai
 OPENROUTER_API_KEY="your_openrouter_api_key_here"
 OPENROUTER_MODEL="meta-llama/llama-3.3-70b-instruct:free"
 OPENROUTER_FALLBACK_MODELS="nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free,qwen/qwen3-coder:free"
 
-# Anthropic / Claude (optional — alternative to OpenRouter)
+# DeepSeek API - OpenAI-compatible endpoint
+DEEPSEEK_API_KEY="your_deepseek_api_key_here"
+DEEPSEEK_MODEL="deepseek-v4-flash"
+DEEPSEEK_FALLBACK_MODELS="deepseek-v4-pro"
+
+# Hugging Face Inference Providers - OpenAI-compatible chat endpoint
+HF_TOKEN="your_hf_token_here"
+HUGGINGFACE_MODEL="meta-llama/Llama-3.1-70B-Instruct"
+
+# Anthropic / Claude (optional - alternative to OpenRouter)
 # Set llm_provider=anthropic in config.json to use Claude instead of OpenRouter
 # ANTHROPIC_API_KEY="your_anthropic_api_key_here"
 
-# Telegram Notification (optional — create bot via @BotFather)
+# Telegram Notification (optional - create bot via @BotFather)
 TELEGRAM_TOKEN="your_telegram_bot_token_here"
 TELEGRAM_CHAT_ID="your_telegram_chat_id_here"
+
+# Discord Notification (optional - create a webhook in your server)
+DISCORD_WEBHOOK_URL="your_discord_webhook_url_here"
 
 # Candidate Configuration (overrides config.json)
 CANDIDATE_NAME="Your Name"

@@ -166,6 +166,8 @@ Step-by-step guides live in [`docs/`](docs/README.md):
 |---|---|---|---|
 | **TinyFish** | **Free** — no credit card | Always | [agent.tinyfish.ai](https://agent.tinyfish.ai) |
 | **OpenRouter** | **Free** — 4-model fallback chain | Unless using Claude CLI / Anthropic | [openrouter.ai](https://openrouter.ai) |
+| **DeepSeek** | Pay-as-you-go | If using `llm_provider=deepseek` | [platform.deepseek.com](https://platform.deepseek.com/) |
+| **Hugging Face** | Credits / pay-as-you-go | If using `llm_provider=huggingface` | [huggingface.co](https://huggingface.co/settings/tokens) |
 | **Telegram** | Free | Optional | [@BotFather](https://t.me/BotFather) on Telegram |
 
 ---
@@ -304,7 +306,31 @@ Uses a 4-model fallback chain — all free, no credit card needed:
 
 If one model hits its daily free-tier quota, the tool automatically tries the next. **Zero LLM cost by default.**
 
-### Alternative A: Claude Code CLI (no API key needed)
+### Alternative B: DeepSeek
+
+OpenAI-compatible API with DeepSeek models.
+
+```json
+"llm_provider": "deepseek",
+"deepseek_api_key": "sk-...",
+"deepseek_model": "deepseek-v4-flash"
+```
+
+Use `deepseek_fallback_models` if you want a backup chain.
+
+### Alternative C: Hugging Face Inference Providers
+
+OpenAI-compatible chat endpoint routed through Hugging Face.
+
+```json
+"llm_provider": "huggingface",
+"huggingface_api_key": "hf_...",
+"huggingface_model": "meta-llama/Llama-3.1-70B-Instruct"
+```
+
+Use `huggingface_fallback_models` if you want a backup chain.
+
+### Alternative D: Claude Code CLI (no API key needed)
 
 If you have [Claude Code](https://claude.ai/code) installed and authenticated, you can use it as the LLM backend — no separate API key required:
 
@@ -325,7 +351,7 @@ Optionally set a model: `"claude_cli_model": "sonnet"` (or `"opus"`, `"haiku"`, 
 > (5–15 LLM calls) burns significantly against your subscription's 7-day rate limit. Prefer OpenRouter
 > for nightly automation; use Claude CLI for occasional on-demand drafts.
 
-### Alternative B: Anthropic API
+### Alternative E: Anthropic API
 
 If you have an Anthropic API key:
 

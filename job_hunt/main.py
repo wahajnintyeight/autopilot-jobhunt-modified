@@ -23,6 +23,8 @@ from dotenv import load_dotenv
 _PLACEHOLDERS = {
     "YOUR_TINYFISH_API_KEY", "your_tinyfish_api_key_here",
     "YOUR_OPENROUTER_API_KEY", "your_openrouter_api_key_here",
+    "YOUR_DEEPSEEK_API_KEY", "your_deepseek_api_key_here",
+    "YOUR_HF_TOKEN", "your_hf_token_here",
     "YOUR_ANTHROPIC_API_KEY", "your_anthropic_api_key_here",
 }
 
@@ -57,6 +59,13 @@ def load_config() -> dict:
         "OPENROUTER_API_KEY": "openrouter_api_key",
         "OPENROUTER_MODEL": "openrouter_model",
         "OPENROUTER_FALLBACK_MODELS": "openrouter_fallback_models",
+        "DEEPSEEK_API_KEY": "deepseek_api_key",
+        "DEEPSEEK_MODEL": "deepseek_model",
+        "DEEPSEEK_FALLBACK_MODELS": "deepseek_fallback_models",
+        "HF_TOKEN": "huggingface_api_key",
+        "HUGGINGFACEHUB_API_TOKEN": "huggingface_api_key",
+        "HUGGINGFACE_MODEL": "huggingface_model",
+        "HUGGINGFACE_FALLBACK_MODELS": "huggingface_fallback_models",
         "CLAUDE_CLI_MODEL": "claude_cli_model",
         "ANTHROPIC_API_KEY": "anthropic_api_key",
         "ANTHROPIC_MODEL": "anthropic_model",
@@ -69,6 +78,12 @@ def load_config() -> dict:
                 config[config_key] = [m.strip() for m in val.split(",")]
             else:
                 config[config_key] = val
+
+    discord_webhook = os.getenv("DISCORD_WEBHOOK_URL") if _use_env(os.getenv("DISCORD_WEBHOOK_URL")) else None
+    if discord_webhook:
+        if "discord" not in config:
+            config["discord"] = {}
+        config["discord"]["webhook_url"] = discord_webhook
 
     tinyfish_key = config.get("tinyfish_api_key", "")
     if not tinyfish_key or _is_placeholder(tinyfish_key):

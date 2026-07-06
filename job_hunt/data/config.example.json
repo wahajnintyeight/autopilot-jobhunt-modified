@@ -8,12 +8,23 @@
     "google/gemma-4-31b-it:free",
     "qwen/qwen3-coder:free"
   ],
+  "deepseek_api_key": "YOUR_DEEPSEEK_API_KEY",
+  "deepseek_model": "deepseek-v4-flash",
+  "deepseek_fallback_models": [
+    "deepseek-v4-pro"
+  ],
+  "huggingface_api_key": "YOUR_HF_TOKEN",
+  "huggingface_model": "meta-llama/Llama-3.1-70B-Instruct",
+  "huggingface_fallback_models": [],
   "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY",
   "anthropic_model": "claude-haiku-4-5-20251001",
   "claude_cli_model": "",
   "telegram": {
     "token": "YOUR_TELEGRAM_BOT_TOKEN",
     "chat_id": "YOUR_TELEGRAM_CHAT_ID"
+  },
+  "discord": {
+    "webhook_url": "YOUR_DISCORD_WEBHOOK_URL"
   },
   "candidate": {
     "name": "Your Name",

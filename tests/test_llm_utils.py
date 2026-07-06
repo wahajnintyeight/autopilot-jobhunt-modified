@@ -91,6 +91,16 @@ def test_chat_with_llm_routes_claude_cli(monkeypatch):
     assert llm_utils.chat_with_llm({"llm_provider": "claude_cli"}, []) == "CLI"
 
 
+def test_chat_with_llm_routes_deepseek(monkeypatch):
+    monkeypatch.setattr(llm_utils, "_chat_with_deepseek", lambda *a, **k: "DS")
+    assert llm_utils.chat_with_llm({"llm_provider": "deepseek"}, []) == "DS"
+
+
+def test_chat_with_llm_routes_huggingface(monkeypatch):
+    monkeypatch.setattr(llm_utils, "_chat_with_huggingface", lambda *a, **k: "HF")
+    assert llm_utils.chat_with_llm({"llm_provider": "huggingface"}, []) == "HF"
+
+
 # --- Anthropic ----------------------------------------------------------------
 
 def test_chat_with_anthropic(monkeypatch):

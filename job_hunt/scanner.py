@@ -1,5 +1,6 @@
 import csv
 import json
+import random
 import re
 import time
 from datetime import datetime, timezone
@@ -9,7 +10,7 @@ from tinyfish import RateLimitError, TinyFish
 
 from job_hunt.llm_utils import chat_with_llm
 from job_hunt.log import get_logger
-from job_hunt.notifier import send_telegram
+from job_hunt.notifier import send_discord, send_telegram
 
 logger = get_logger()
 
@@ -336,12 +337,27 @@ def _export_to_csv(jobs: list[dict], label: str) -> Path:
 def run_scan(config: dict, companies: list[dict]) -> None:
     scan_start = time.time()
     total = len(companies)
+
+    # Randomise scan order so no single company always goes first (and gets the
+    # full wait if the run is interrupted early). A fixed `scan_seed` in config
+    # makes the order reproducible for debugging; absent it, a fresh shuffle
+    # every run. The seed is logged so a problematic run can be replayed.
+    companies = list(companies)
+    seed = config.get("scan_seed")
+    rng = random.Random(seed) if seed is not None else random.Random()
+    rng.shuffle(companies)
     logger.info(f"=== Scan started — {total} companies to check ===")
+    if seed is not None:
+        logger.info(f"Scan order seeded with scan_seed={seed} (reproducible)")
+    else:
+        logger.info("Scan order randomised (no scan_seed set — fresh shuffle)")
     logger.info(f"Candidate: {config.get('candidate', {}).get('name', 'unknown')}")
     logger.info(f"Min score: {config.get('candidate', {}).get('min_score', 55)} | Top N: {config.get('candidate', {}).get('top_n', 5)}")
-    provider = config.get("llm_provider") or "openrouter"
+    provider = (config.get("llm_provider") or "openrouter").lower()
     model_by_provider = {
         "openrouter": config.get("openrouter_model", "default"),
+        "deepseek": config.get("deepseek_model", "default"),
+        "huggingface": config.get("huggingface_model", "default"),
         "anthropic": config.get("anthropic_model", "default"),
         "claude_cli": config.get("claude_cli_model") or "claude default",
     }
@@ -382,6 +398,12 @@ def run_scan(config: dict, companies: list[dict]) -> None:
             logger.info(f"  {len(new_jobs)} new job URL(s) — fetching details...")
             new_jobs = fetch_job_details(tf, new_jobs)
             seen_urls.update(j["url"] for j in new_jobs)
+
+            # Persist seen URLs after each company so an interrupted scan (Ctrl-C,
+            # crash, network drop) doesn't re-process these URLs next time. The
+            # final save at the end of run_scan also stamps last_scan time.
+            state["seen_urls"] = list(seen_urls)
+            save_state(state)
 
             logger.info(f"  Scoring {len(new_jobs)} job(s)...")
             scored: list[dict] = []
@@ -456,33 +478,72 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     date_str = datetime.now().strftime("%d %b %Y")
     tg = config.get("telegram", {})
     telegram_configured = bool(tg.get("token") and tg.get("chat_id"))
+    discord = config.get("discord", {})
+    discord_webhook = discord.get("webhook_url")
+    discord_configured = bool(discord_webhook)
 
-    # Always persist results to CSV when there are scored jobs — this is the
-    # durable record regardless of whether Telegram is configured.
+    # Always persist results to CSV when there are scored jobs ? this is the
+    # durable record regardless of whether Telegram or Discord is configured.
     csv_path = _export_to_csv(all_scored_jobs, "scan results") if all_scored_jobs else None
 
     if errors and telegram_configured:
-        error_msg = f"<b>Job Hunt Errors — {date_str}</b>\n" + "\n".join(errors)
+        error_msg = f"<b>Job Hunt Errors ? {date_str}</b>\n" + "\n".join(errors)
         send_telegram(tg["token"], tg["chat_id"], error_msg)
+    if errors and discord_configured:
+        error_msg = f"Job Hunt Errors - {date_str}\n" + "\n".join(errors)
+        send_discord(discord_webhook, error_msg)
 
     if not top_jobs:
         logger.info("No matching jobs found today.")
         if telegram_configured:
-            msg = f"<b>Job Hunt — {date_str}</b>\nNo new matches today."
+            msg = f"<b>Job Hunt ? {date_str}</b>\nNo new matches today."
             send_telegram(tg["token"], tg["chat_id"], msg)
+        if discord_configured:
+            send_discord(discord_webhook, f"**Job Hunt - {date_str}**\nNo new matches today.")
         return
 
     msg = format_telegram_message(top_jobs, date_str)
     logger.info("\n" + msg)
+    discord_msg = "\n".join(
+        [
+            f"**Job Hunt - {date_str}**",
+            f"*{len(top_jobs)} matches found*",
+            "",
+            *[
+                "\n".join(
+                    [
+                        f"**#{i}** | {job['company']} | {job.get('extracted_title', job['title'])}",
+                        f"?? {job.get('location_remote', job['location'])}",
+                        f"?? {job.get('stack', 'N/A')}",
+                        f"? {job.get('reason', '')}",
+                        f"[Apply]({job['url']})",
+                        "",
+                    ]
+                )
+                for i, job in enumerate(top_jobs, 1)
+            ],
+            'Reply "apply to #N" to draft application.',
+        ]
+    )
 
     # Telegram is an optional notification on top of the CSV. When it's not
-    # configured we simply skip it — no error, the CSV already holds the results.
+    # configured we simply skip it ? no error, the CSV already holds the results.
     if telegram_configured:
         sent = send_telegram(tg["token"], tg["chat_id"], msg)
         if sent:
             logger.info(f"Telegram notification sent. Results also saved to CSV: {csv_path}")
         else:
-            logger.warning(f"Telegram send failed — results saved to CSV: {csv_path}")
+            logger.warning(f"Telegram send failed ? results saved to CSV: {csv_path}")
     else:
-        logger.info(f"Telegram not configured — results saved to CSV: {csv_path}")
+        logger.info(f"Telegram not configured ? results saved to CSV: {csv_path}")
         logger.info("Add telegram.token and telegram.chat_id to config.json to enable notifications.")
+
+    if discord_configured:
+        sent = send_discord(discord_webhook, discord_msg)
+        if sent:
+            logger.info(f"Discord notification sent. Results also saved to CSV: {csv_path}")
+        else:
+            logger.warning(f"Discord send failed ? results saved to CSV: {csv_path}")
+    else:
+        logger.info(f"Discord not configured ? results saved to CSV: {csv_path}")
+        logger.info("Add discord.webhook_url to config.json to enable Discord notifications.")
