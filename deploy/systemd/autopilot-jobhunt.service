@@ -5,10 +5,10 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/autopilot-jobhunt
-Environment=AUTOPILOT_LOG_FILE=/opt/autopilot-jobhunt/scan.log
+WorkingDirectory=/var/www/autopilot-jobhunt
+Environment=AUTOPILOT_LOG_FILE=/var/www/autopilot-jobhunt/scan.log
 Environment=PYTHONIOENCODING=utf-8
-ExecStart=/opt/autopilot-jobhunt/.venv/bin/autopilot service
+ExecStart=/var/www/autopilot-jobhunt/venv/bin/autopilot service
 Restart=always
 RestartSec=10
 Nice=10
