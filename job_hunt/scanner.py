@@ -3,7 +3,7 @@ import json
 import random
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 from tinyfish import RateLimitError, TinyFish
@@ -142,6 +142,8 @@ def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict
     for key in ("datePosted", "companyName", "companyId", "urlPath", "urlParam", "keywords", "excludeKeywords"):
         if key in apify_cfg:
             run_input[key] = apify_cfg[key]
+    if "datePosted" not in run_input:
+        run_input["datePosted"] = "r86400"
     skip_job_ids = set(str(job_id) for job_id in apify_cfg.get("skipJobId", []) if job_id)
     if seen_job_ids:
         skip_job_ids.update(str(job_id) for job_id in seen_job_ids if job_id)
@@ -195,6 +197,58 @@ def _matches_apify_keyword_filters(job: dict, apify_cfg: dict) -> bool:
     keywords = [str(k) for k in apify_cfg.get("keywords", []) if k]
     if keywords and not any(_term_in_text(term, text) for term in keywords):
         return False
+    return True
+
+
+def _parse_application_count(value) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    match = re.search(r"(\d+)", str(value))
+    return int(match.group(1)) if match else None
+
+
+def _parse_posted_date(item: dict) -> datetime | None:
+    raw = item.get("postedDate") or item.get("posted_date")
+    if raw:
+        try:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        except ValueError:
+            pass
+    posted_time_ago = str(item.get("postedTimeAgo") or item.get("posted_time_ago") or "").strip().lower()
+    if not posted_time_ago:
+        return None
+    match = re.search(r"(\d+)\s*(minute|hour|day|week|month|year)s?\s+ago", posted_time_ago)
+    if not match:
+        return None
+    amount = int(match.group(1))
+    unit = match.group(2)
+    delta_kwargs = {
+        "minute": {"minutes": amount},
+        "hour": {"hours": amount},
+        "day": {"days": amount},
+        "week": {"weeks": amount},
+        "month": {"days": amount * 30},
+        "year": {"days": amount * 365},
+    }[unit]
+    return datetime.now(UTC) - timedelta(**delta_kwargs)
+
+
+def _matches_apify_freshness_and_applicant_limits(item: dict, apify_cfg: dict) -> bool:
+    max_applicants = int(apify_cfg.get("maxApplicants", 20))
+    applicant_count = _parse_application_count(item.get("applicationsCount"))
+    if applicant_count is not None and applicant_count >= max_applicants:
+        return False
+
+    max_age_hours = int(apify_cfg.get("maxAgeHours", 24))
+    posted_dt = _parse_posted_date(item)
+    if posted_dt is not None:
+        age_hours = (datetime.now(UTC) - posted_dt).total_seconds() / 3600
+        if age_hours > max_age_hours:
+            return False
+
     return True
 
 
@@ -288,6 +342,7 @@ def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | 
             and job["url"] not in seen_urls
             and job.get("linkedin_id") not in seen_job_ids
             and _matches_apify_keyword_filters(job, apify_cfg)
+            and _matches_apify_freshness_and_applicant_limits(item, apify_cfg)
         ):
             jobs.append(job)
     logger.info("Apify LinkedIn: %d new job(s) from %d dataset item(s)", len(jobs), len(items))

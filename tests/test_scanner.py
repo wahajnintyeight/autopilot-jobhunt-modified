@@ -274,6 +274,22 @@ def test_apify_keyword_filters_exclude_go_and_require_keywords():
     )
 
 
+def test_apify_freshness_and_applicant_limits():
+    cfg = {"maxApplicants": 20, "maxAgeHours": 24}
+    assert scanner._matches_apify_freshness_and_applicant_limits(
+        {"applicationsCount": "19 applicants", "postedDate": "2026-07-12T00:00:00.000Z"},
+        cfg,
+    )
+    assert not scanner._matches_apify_freshness_and_applicant_limits(
+        {"applicationsCount": "20 applicants", "postedDate": "2026-07-12T00:00:00.000Z"},
+        cfg,
+    )
+    assert not scanner._matches_apify_freshness_and_applicant_limits(
+        {"applicationsCount": "10 applicants", "postedDate": "2026-07-10T00:00:00.000Z"},
+        cfg,
+    )
+
+
 # --- export --------------------------------------------------------------------
 
 def test_export_to_csv(tmp_path, monkeypatch):

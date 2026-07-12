@@ -5,6 +5,7 @@ import requests
 
 _DISCORD_CONTENT_LIMIT = 2000
 _DISCORD_SAFE_CHUNK = 1900
+_DISCORD_MENTION_PREFIX = "@everyone\n"
 
 
 def _chunk_discord_message(message: str) -> list[str]:
@@ -64,7 +65,10 @@ def send_telegram(bot_token: str, chat_id: str, message: str) -> bool:
 def send_discord(webhook_url: str, message: str) -> bool:
     try:
         for chunk in _chunk_discord_message(message):
-            payload: dict[str, Any] = {"content": chunk, "allowed_mentions": {"parse": []}}
+            payload: dict[str, Any] = {
+                "content": f"{_DISCORD_MENTION_PREFIX}{chunk}".rstrip(),
+                "allowed_mentions": {"parse": ["everyone"]},
+            }
             resp = requests.post(webhook_url, json=payload, timeout=15)
             if resp.status_code not in (200, 204):
                 print(f"Discord failed: HTTP {resp.status_code} — {resp.text[:200]}")

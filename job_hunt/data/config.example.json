@@ -13,7 +13,9 @@
     "remote": ["2", "3"],
     "keywords": ["Node.js", "NestJS", "Express", "TypeScript", "JavaScript", "PHP", "Laravel", "React", "Angular"],
     "excludeKeywords": ["Python", "Go", "Golang", "Django", "Flask"],
-    "datePosted": "r604800",
+    "datePosted": "r86400",
+    "maxApplicants": 20,
+    "maxAgeHours": 24,
     "skipJobId": []
   },
   "llm_provider": "openrouter",
