@@ -4,7 +4,7 @@
 
 **Your AI job agent. Finds, scores, and drafts applications — while you sleep.**
 
-> Scans 130+ company careers pages nightly → scores every role against your resume with an LLM → sends you the top matches on Telegram → drafts a tailored resume + cover letter on demand.
+> Scans 130+ company careers pages plus optional Apify LinkedIn searches → scores every role against your resume with an LLM → sends you the top matches on Discord or Telegram → drafts a tailored resume + cover letter on demand.
 >
 > 🔒 **Drafts only — never applies.** You review every draft and submit applications yourself. See [PRIVACY.md](PRIVACY.md) for exactly what data leaves your machine.
 
@@ -35,8 +35,9 @@ Published on [PyPI](https://pypi.org/project/autopilot-jobhunt/) and listed on t
 ```mermaid
 flowchart LR
     A["🌐 130+ Careers Pages"] -->|TinyFish API| B["Job Discovery"]
+    X["💼 Apify LinkedIn Scraper"] -->|Apify API| B
     B --> C["LLM Batch Scorer\n(0–100 fit score)"]
-    C -->|score ≥ min| D["📱 Telegram Alert\nTop N matches"]
+    C -->|score ≥ min| D["📱 Discord / Telegram Alert\nTop N matches"]
     C -->|on demand| E["✉️ Cover Letter\n+ Resume Bullets"]
     C --> F["📊 CSV Export"]
 ```
@@ -60,7 +61,7 @@ Scanning Stripe...
   No new jobs found
 ...
 Scan complete.
-Top 5 sent to Telegram.
+Top 5 sent to Discord/Telegram.
 ```
 
 ### What the Telegram notification looks like
@@ -91,10 +92,10 @@ Reply "apply to #N" to draft a tailored application.
 ## What it does
 
 ```
-Every night at 2:30 AM:
+Every configured schedule:
   ┌─────────────────────────────────────────────────────────┐
-  │  Scans careers pages  →  Scores with LLM  →  Notifies  │
-  │       (130+ cos)           (0–100 fit)       (Telegram) │
+  │ Scans careers pages / Apify → Scores with LLM → Alerts │
+  │   (130+ cos + LinkedIn)       (0–100 fit)   (Discord / Telegram) │
   └─────────────────────────────────────────────────────────┘
 
 On demand:
@@ -152,11 +153,11 @@ Step-by-step guides live in [`docs/`](docs/README.md):
 |---|---|
 | [Install](docs/01-install.md) | pip / from source / `autopilot init` scaffolding |
 | [LLM providers](docs/02-providers.md) | OpenRouter fallback chain, Claude CLI (keyless), Anthropic API |
-| [API keys](docs/03-api-keys.md) | TinyFish + OpenRouter keys, where each goes |
+| [API keys](docs/03-api-keys.md) | TinyFish, Apify, OpenRouter keys, where each goes |
 | [Companies & scanning](docs/04-companies-and-scanning.md) | `companies.json`, discovery + scoring, scan pacing |
-| [Integrations](docs/05-integrations.md) | Telegram notifications |
+| [Integrations](docs/05-integrations.md) | Telegram, Discord, Apify LinkedIn source |
 | [MCP server & Skill](docs/06-mcp-and-skill.md) | Drive the hunt from Claude Code |
-| [Config & scoring](docs/07-config-and-scoring.md) | Candidate profile, `min_score`, `top_n` |
+| [Config & scoring](docs/07-config-and-scoring.md) | Candidate profile, `min_score`, `top_n`, Apify source settings |
 | [Troubleshooting](docs/08-troubleshooting.md) | Every error we've hit, and the fix |
 | [Testing checklist](docs/09-testing-checklist.md) | Reproducible independent verification |
 
@@ -165,10 +166,12 @@ Step-by-step guides live in [`docs/`](docs/README.md):
 | Service | Cost | Required | Where to get it |
 |---|---|---|---|
 | **TinyFish** | **Free** — no credit card | Always | [agent.tinyfish.ai](https://agent.tinyfish.ai) |
+| **Apify** | Free tier available | Optional | [apify.com](https://apify.com) |
 | **OpenRouter** | **Free** — 4-model fallback chain | Unless using Claude CLI / Anthropic | [openrouter.ai](https://openrouter.ai) |
 | **DeepSeek** | Pay-as-you-go | If using `llm_provider=deepseek` | [platform.deepseek.com](https://platform.deepseek.com/) |
 | **Hugging Face** | Credits / pay-as-you-go | If using `llm_provider=huggingface` | [huggingface.co](https://huggingface.co/settings/tokens) |
 | **Telegram** | Free | Optional | [@BotFather](https://t.me/BotFather) on Telegram |
+| **Discord** | Free | Optional | Any Discord webhook |
 
 ---
 
@@ -191,6 +194,7 @@ pip install -e '.[mcp]'
 ```bash
 claude mcp add autopilot-jobhunt \
   --env TINYFISH_API_KEY=your_key \
+  --env APIFY_API_TOKEN=your_key \
   --env OPENROUTER_API_KEY=your_key \
   --env TELEGRAM_TOKEN=your_token \
   --env TELEGRAM_CHAT_ID=your_chat_id \
@@ -208,6 +212,7 @@ claude mcp add autopilot-jobhunt \
       "cwd": "/absolute/path/to/autopilot-jobhunt",
       "env": {
         "TINYFISH_API_KEY": "your_key",
+        "APIFY_API_TOKEN": "your_key",
         "OPENROUTER_API_KEY": "your_key",
         "TELEGRAM_TOKEN": "your_token",
         "TELEGRAM_CHAT_ID": "your_chat_id"
@@ -251,6 +256,49 @@ Edit `companies.json`. Each entry needs:
 
 The repo ships with 130+ pre-configured EU, NZ, and remote-friendly tech companies. Add or remove as you like.
 
+## Apify LinkedIn source
+
+Autopilot can also run the Apify `linkedin-jobs-scraper` actor and score those jobs with the same LLM pipeline.
+
+### Enable it
+
+Add this to `config.json`:
+
+```json
+{
+  "apify_api_token": "apify_api_...",
+  "apify_linkedin": {
+    "enabled": true,
+    "actor_id": "valig/linkedin-jobs-scraper",
+    "title": "backend engineer OR full stack engineer OR nodejs engineer OR php developer",
+    "location": "European Union",
+    "limit": 100,
+    "skipEasyApply": true,
+    "experienceLevel": ["3", "4", "5"],
+    "contractType": ["F", "C"],
+    "remote": ["2", "3"],
+    "datePosted": "r604800",
+    "skipJobId": []
+  }
+}
+```
+
+Add the token to `.env`:
+
+```bash
+APIFY_API_TOKEN=your_apify_token_here
+```
+
+### What it does
+
+- Pulls jobs from LinkedIn through Apify.
+- Scores them with the existing LLM pipeline.
+- Sends high-scoring matches to Discord and/or Telegram.
+- Writes the jobs to `state/last_scan.json` and the CSV export.
+- Stores LinkedIn job IDs in `state/seen_apify_job_ids` and passes them back as `skipJobId` on the next run.
+
+If you want to tune the Apify query, the config supports `datePosted`, `companyName`, `companyId`, `urlPath`, `urlParam`, and `skipJobId` as direct pass-through fields.
+
 ---
 
 ## How scoring works
@@ -266,6 +314,10 @@ The LLM reads your full resume + the full job description and assigns a score 0�
 
 Set `min_score` in config to filter. Default: 60.
 
+The scheduler uses `service.schedules` in `config.json`. In the current checked-in
+config, `scan_every_3_hours` runs with `cron: "0 */3 * * *"`. If you remove the custom
+schedule, the service falls back to a single daily scan at `30 2 * * *`.
+
 ---
 
 ## Project structure
@@ -274,9 +326,9 @@ Set `min_score` in config to filter. Default: 60.
 autopilot-jobhunt/
 ├── job_hunt/
 │   ├── main.py          # CLI entry point
-│   ├── scanner.py       # Job discovery + LLM scoring
+│   ├── scanner.py       # Job discovery + Apify LinkedIn + LLM scoring
 │   ├── drafter.py       # Resume tailoring + cover letter
-│   ├── notifier.py      # Telegram notifications
+│   ├── notifier.py      # Discord / Telegram notifications
 │   ├── llm_utils.py     # OpenRouter wrapper with fallback
 │   ├── tools.py         # Protocol-agnostic tool layer
 │   └── mcp_server.py    # MCP server (Claude/AI assistant integration)

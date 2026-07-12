@@ -119,6 +119,135 @@ def save_state(state: dict) -> None:
 _FETCH_URL_DELAY = 2.5
 
 
+def _is_configured_secret(value: str | None) -> bool:
+    if not value:
+        return False
+    return not (value.startswith("YOUR_") or value.startswith("your_") or value.endswith("_here"))
+
+
+def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict:
+    apify_cfg = config.get("apify_linkedin", {})
+    run_input = {
+        "title": apify_cfg.get(
+            "title",
+            "backend engineer OR full stack engineer OR nodejs engineer OR php developer",
+        ),
+        "location": apify_cfg.get("location", "European Union"),
+        "limit": int(apify_cfg.get("limit", 100)),
+        "skipEasyApply": bool(apify_cfg.get("skipEasyApply", True)),
+        "experienceLevel": apify_cfg.get("experienceLevel", ["3", "4", "5"]),
+        "contractType": apify_cfg.get("contractType", ["F", "C"]),
+        "remote": apify_cfg.get("remote", ["2", "3"]),
+    }
+    for key in ("datePosted", "companyName", "companyId", "urlPath", "urlParam"):
+        if key in apify_cfg:
+            run_input[key] = apify_cfg[key]
+    skip_job_ids = set(str(job_id) for job_id in apify_cfg.get("skipJobId", []) if job_id)
+    if seen_job_ids:
+        skip_job_ids.update(str(job_id) for job_id in seen_job_ids if job_id)
+    if skip_job_ids:
+        run_input["skipJobId"] = sorted(skip_job_ids)
+    return run_input
+
+
+def _first_present(item: dict, keys: list[str], default: str = "") -> str:
+    for key in keys:
+        value = item.get(key)
+        if value:
+            return str(value)
+    return default
+
+
+def _normalize_apify_job(item: dict) -> dict | None:
+    url = _first_present(item, ["url", "jobUrl", "job_url", "link", "applyUrl", "apply_url"])
+    title = _first_present(item, ["title", "jobTitle", "job_title", "position"])
+    company = _first_present(item, ["companyName", "company", "company_name"], "LinkedIn")
+    location = _first_present(item, ["location", "jobLocation", "job_location"], "LinkedIn")
+    description = _first_present(item, ["description", "jobDescription", "job_description", "text"])
+    apply_url = _first_present(item, ["applyUrl", "apply_url"])
+
+    if not url or not title:
+        return None
+
+    metadata = [
+        f"Experience level: {item.get('experienceLevel')}" if item.get("experienceLevel") else "",
+        f"Contract type: {item.get('contractType')}" if item.get("contractType") else "",
+        f"Work type: {item.get('workType')}" if item.get("workType") else "",
+        f"Sector: {item.get('sector')}" if item.get("sector") else "",
+        f"Posted: {item.get('postedDate') or item.get('postedTimeAgo')}" if item.get("postedDate") or item.get("postedTimeAgo") else "",
+        f"Applications: {item.get('applicationsCount')}" if item.get("applicationsCount") else "",
+        f"Apply type: {item.get('applyType')}" if item.get("applyType") else "",
+    ]
+    content = "\n".join([line for line in metadata if line] + ([description] if description else []))
+
+    return {
+        "url": url,
+        "title": title,
+        "snippet": description[:500],
+        "content": content[:3000],
+        "company": company,
+        "company_url": _first_present(item, ["companyUrl", "company_url"]),
+        "location": location,
+        "linkedin_id": _first_present(item, ["id"]),
+        "posted_date": _first_present(item, ["postedDate", "posted_date"]),
+        "apply_url": apply_url,
+        "apply_type": _first_present(item, ["applyType", "apply_type"]),
+        "contract_type": _first_present(item, ["contractType", "contract_type"]),
+        "experience_level": _first_present(item, ["experienceLevel", "experience_level"]),
+        "region": "LinkedIn",
+        "source": "apify_linkedin",
+    }
+
+
+def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | None = None) -> list[dict]:
+    apify_cfg = config.get("apify_linkedin", {})
+    if not apify_cfg.get("enabled", False):
+        return []
+
+    token = config.get("apify_api_token")
+    if not _is_configured_secret(token):
+        logger.warning("Apify LinkedIn source enabled but APIFY_API_TOKEN is not configured")
+        return []
+
+    try:
+        from apify_client import ApifyClient
+    except ImportError:
+        logger.error("Apify LinkedIn source requires apify-client. Install dependencies from requirements.txt.")
+        return []
+
+    actor_id = apify_cfg.get("actor_id", "valig/linkedin-jobs-scraper")
+    run_input = _apify_run_input(config, seen_job_ids)
+    logger.info(
+        "Apify LinkedIn: running %s for %r in %r (limit=%s, skipJobId=%s)",
+        actor_id,
+        run_input["title"],
+        run_input["location"],
+        run_input["limit"],
+        len(run_input.get("skipJobId", [])),
+    )
+
+    try:
+        client = ApifyClient(token)
+        run = client.actor(actor_id).call(run_input=run_input)
+        dataset_id = run.get("defaultDatasetId")
+        if not dataset_id:
+            logger.warning("Apify LinkedIn run finished without a dataset id")
+            return []
+        items = client.dataset(dataset_id).list_items().items
+    except Exception as e:
+        logger.error(f"Apify LinkedIn fetch failed: {e}")
+        return []
+
+    jobs: list[dict] = []
+    seen_job_ids = seen_job_ids or set()
+    for item in items:
+        job = _normalize_apify_job(item)
+        if job and job["url"] not in seen_urls and job.get("linkedin_id") not in seen_job_ids:
+            jobs.append(job)
+    logger.info("Apify LinkedIn: %d new job(s) from %d dataset item(s)", len(jobs), len(items))
+    return jobs
+
+
 def _fetch_with_ratelimit(tf: TinyFish, urls: list[str], **kwargs):
     for attempt in range(2):
         try:
@@ -404,12 +533,55 @@ def run_scan(config: dict, companies: list[dict]) -> None:
 
     state = load_state()
     seen_urls: set = set(state.get("seen_urls", []))
-    logger.info(f"State loaded — {len(seen_urls)} previously seen URLs")
+    seen_apify_job_ids: set = set(state.get("seen_apify_job_ids", []))
+    logger.info(
+        f"State loaded — {len(seen_urls)} previously seen URLs, "
+        f"{len(seen_apify_job_ids)} Apify LinkedIn job IDs"
+    )
 
     all_scored_jobs: list[dict] = []
     errors: list[str] = []
     companies_scanned = 0
     companies_with_jobs = 0
+
+    apify_jobs = fetch_apify_linkedin_jobs(config, seen_urls, seen_apify_job_ids)
+    if apify_jobs:
+        seen_urls.update(j["url"] for j in apify_jobs)
+        seen_apify_job_ids.update(j["linkedin_id"] for j in apify_jobs if j.get("linkedin_id"))
+        state["seen_urls"] = list(seen_urls)
+        state["seen_apify_job_ids"] = list(seen_apify_job_ids)
+        save_state(state)
+        logger.info(f"Apify LinkedIn: scoring {len(apify_jobs)} job(s)...")
+        try:
+            apify_scored: list[dict] = []
+            for i in range(0, len(apify_jobs), 10):
+                batch = apify_jobs[i: i + 10]
+                logger.debug(f"Apify LinkedIn: scoring batch {i // 10 + 1} ({len(batch)} jobs)...")
+                apify_scored.extend(score_jobs(batch, resume, config))
+        except Exception as score_err:
+            logger.error(f"Apify LinkedIn scoring failed: {score_err}")
+            errors.append(f"⚠️ Scoring failed for Apify LinkedIn: {score_err}")
+            apify_scored = apify_jobs
+
+        if apify_scored:
+            all_scored_jobs.extend(apify_scored)
+            titles = [j.get("extracted_title") or j.get("title", "?") for j in apify_scored[:3]]
+            logger.info(
+                f"Apify LinkedIn: {len(apify_scored)} job(s) saved: "
+                f"{', '.join(titles)}{' ...' if len(apify_scored) > 3 else ''}"
+            )
+            discord_jobs = sorted(
+                [j for j in apify_scored if j.get("score", 0) >= min_score],
+                key=lambda x: x.get("score", 0),
+                reverse=True,
+            )[:top_n]
+            if discord_configured and discord_jobs:
+                date_str = datetime.now().strftime("%d %b %Y")
+                sent = send_discord(discord_webhook, format_discord_message(discord_jobs, date_str))
+                if sent:
+                    logger.info("Apify LinkedIn: Discord notification sent for scored jobs.")
+                else:
+                    logger.warning("Apify LinkedIn: Discord send failed for scored jobs.")
 
     for idx, company in enumerate(companies, 1):
         logger.info(f"[{idx}/{total}] Scanning {company['name']}...")
@@ -471,6 +643,7 @@ def run_scan(config: dict, companies: list[dict]) -> None:
             continue
 
     state["seen_urls"] = list(seen_urls)
+    state["seen_apify_job_ids"] = list(seen_apify_job_ids)
     state["last_scan"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
     logger.debug("State saved")

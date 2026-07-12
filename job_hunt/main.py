@@ -55,6 +55,7 @@ def load_config() -> dict:
 
     env_mapping = {
         "TINYFISH_API_KEY": "tinyfish_api_key",
+        "APIFY_API_TOKEN": "apify_api_token",
         "LLM_PROVIDER": "llm_provider",
         "OPENROUTER_API_KEY": "openrouter_api_key",
         "OPENROUTER_MODEL": "openrouter_model",

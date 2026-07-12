@@ -15,7 +15,7 @@ from job_hunt import main
 def workdir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     # Start from a clean env so the host shell's keys don't leak into assertions.
-    for k in ("TINYFISH_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY",
+    for k in ("TINYFISH_API_KEY", "APIFY_API_TOKEN", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY",
               "ANTHROPIC_MODEL", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"):
         monkeypatch.delenv(k, raising=False)
     return tmp_path
@@ -63,6 +63,15 @@ def test_anthropic_key_bridged_from_env(workdir, monkeypatch):
     cfg = main.load_config()
 
     assert cfg["anthropic_api_key"] == "sk-ant-real"
+
+
+def test_apify_token_bridged_from_env(workdir, monkeypatch):
+    _write_config(workdir)
+    monkeypatch.setenv("APIFY_API_TOKEN", "apify-real")
+
+    cfg = main.load_config()
+
+    assert cfg["apify_api_token"] == "apify-real"
 
 
 def test_deepseek_and_hf_env_bridged(workdir, monkeypatch):

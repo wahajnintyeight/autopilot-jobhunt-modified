@@ -35,7 +35,7 @@ def send_telegram(bot_token: str, chat_id: str, message: str) -> bool:
 
 
 def send_discord(webhook_url: str, message: str) -> bool:
-    payload: dict[str, Any] = {"content": message}
+    payload: dict[str, Any] = {"content": message, "allowed_mentions": {"parse": []}}
     try:
         resp = requests.post(webhook_url, json=payload, timeout=15)
         if resp.status_code in (200, 204):

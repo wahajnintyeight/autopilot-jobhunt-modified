@@ -1,5 +1,19 @@
 {
   "tinyfish_api_key": "YOUR_TINYFISH_API_KEY",
+  "apify_api_token": "YOUR_APIFY_API_TOKEN",
+  "apify_linkedin": {
+    "enabled": false,
+    "actor_id": "valig/linkedin-jobs-scraper",
+    "title": "backend engineer OR full stack engineer OR nodejs engineer OR php developer",
+    "location": "European Union",
+    "limit": 100,
+    "skipEasyApply": true,
+    "experienceLevel": ["3", "4", "5"],
+    "contractType": ["F", "C"],
+    "remote": ["2", "3"],
+    "datePosted": "r604800",
+    "skipJobId": []
+  },
   "llm_provider": "openrouter",
   "openrouter_api_key": "YOUR_OPENROUTER_API_KEY",
   "openrouter_model": "meta-llama/llama-3.3-70b-instruct:free",

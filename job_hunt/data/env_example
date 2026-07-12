@@ -1,6 +1,9 @@
 # TinyFish API - get yours at https://agent.tinyfish.ai
 TINYFISH_API_KEY="your_tinyfish_api_key_here"
 
+# Apify API - optional LinkedIn jobs source
+APIFY_API_TOKEN="your_apify_api_token_here"
+
 # OpenRouter API - free tier available at https://openrouter.ai
 OPENROUTER_API_KEY="your_openrouter_api_key_here"
 OPENROUTER_MODEL="meta-llama/llama-3.3-70b-instruct:free"

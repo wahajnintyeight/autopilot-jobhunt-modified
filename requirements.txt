@@ -1,4 +1,5 @@
 tinyfish>=0.2.5
+apify-client>=1.8.1
 openai>=2.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
