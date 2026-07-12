@@ -68,6 +68,19 @@ def test_send_discord_success(monkeypatch, capsys):
     assert "Discord sent." in capsys.readouterr().out
 
 
+def test_send_discord_splits_long_messages(monkeypatch):
+    payloads = []
+
+    def fake_post(url, json=None, timeout=None):
+        payloads.append(json)
+        return _Resp(204)
+
+    monkeypatch.setattr(notifier.requests, "post", fake_post)
+    assert notifier.send_discord("https://discord.com/api/webhooks/abc", "x" * 2500) is True
+    assert len(payloads) == 2
+    assert all(len(payload["content"]) <= 2000 for payload in payloads)
+
+
 def test_send_discord_http_error(monkeypatch):
     monkeypatch.setattr(notifier.requests, "post", lambda *a, **k: _Resp(400, "bad"))
     assert notifier.send_discord("https://discord.com/api/webhooks/abc", "hi") is False

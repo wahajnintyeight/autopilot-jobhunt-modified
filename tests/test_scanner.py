@@ -200,6 +200,38 @@ def test_fetch_apify_linkedin_jobs(monkeypatch):
     assert out[0]["linkedin_id"] == "new-id"
 
 
+def test_fetch_apify_linkedin_jobs_accepts_run_object(monkeypatch):
+    class FakeDataset:
+        def list_items(self):
+            return types.SimpleNamespace(items=[
+                {"id": "new-id", "url": "https://linkedin.com/jobs/view/1",
+                 "title": "Backend Engineer", "companyName": "Acme"},
+            ])
+
+    class FakeActor:
+        def call(self, run_input=None):
+            return types.SimpleNamespace(default_dataset_id="ds1")
+
+    class FakeClient:
+        def __init__(self, token):
+            assert token == "apify-real"
+
+        def actor(self, actor_id):
+            return FakeActor()
+
+        def dataset(self, dataset_id):
+            assert dataset_id == "ds1"
+            return FakeDataset()
+
+    monkeypatch.setitem(__import__("sys").modules, "apify_client", types.SimpleNamespace(ApifyClient=FakeClient))
+    cfg = {"apify_api_token": "apify-real", "apify_linkedin": {"enabled": True}}
+
+    out = scanner.fetch_apify_linkedin_jobs(cfg, set(), set())
+
+    assert len(out) == 1
+    assert out[0]["linkedin_id"] == "new-id"
+
+
 def test_apify_run_input_passes_optional_actor_fields():
     cfg = {"apify_linkedin": {
         "datePosted": "r604800",
@@ -207,6 +239,8 @@ def test_apify_run_input_passes_optional_actor_fields():
         "companyId": ["1441"],
         "urlPath": "/jobs/search",
         "urlParam": [{"key": "f_TPR", "value": "r3600"}],
+        "keywords": ["Node.js", "NestJS"],
+        "excludeKeywords": ["Python", "Go"],
     }}
 
     out = scanner._apify_run_input(cfg, {"4219847745"})
@@ -216,7 +250,28 @@ def test_apify_run_input_passes_optional_actor_fields():
     assert out["companyId"] == ["1441"]
     assert out["urlPath"] == "/jobs/search"
     assert out["urlParam"] == [{"key": "f_TPR", "value": "r3600"}]
+    assert out["keywords"] == ["Node.js", "NestJS"]
+    assert out["excludeKeywords"] == ["Python", "Go"]
     assert out["skipJobId"] == ["4219847745"]
+
+
+def test_apify_keyword_filters_exclude_go_and_require_keywords():
+    cfg = {
+        "keywords": ["Node.js", "Laravel"],
+        "excludeKeywords": ["Go", "Python"],
+    }
+    assert scanner._matches_apify_keyword_filters(
+        {"title": "Backend Developer", "content": "Node.js APIs with TypeScript"},
+        cfg,
+    )
+    assert not scanner._matches_apify_keyword_filters(
+        {"title": "Backend Developer", "content": "Go services on Kubernetes"},
+        cfg,
+    )
+    assert not scanner._matches_apify_keyword_filters(
+        {"title": "Backend Developer", "content": "Ruby on Rails"},
+        cfg,
+    )
 
 
 # --- export --------------------------------------------------------------------
@@ -312,17 +367,15 @@ def test_run_apify_scan(monkeypatch, tmp_path):
     assert sent
 
 
-def test_run_scan_includes_apify_jobs(scan_setup, monkeypatch):
+def test_run_scan_does_not_run_apify(scan_setup, monkeypatch):
+    def boom(*args, **kwargs):
+        raise AssertionError("Apify should run through run_apify_scan, not run_scan")
+
+    monkeypatch.setattr(scanner, "fetch_apify_linkedin_jobs", boom)
     cfg, companies = scan_setup
     cfg["apify_linkedin"] = {"enabled": True}
-    cfg["apify_api_token"] = "apify-real"
-    monkeypatch.setattr(scanner, "fetch_apify_linkedin_jobs", lambda cfg, seen, seen_ids: [
-        {"url": "https://linkedin.com/jobs/view/1", "linkedin_id": "4388146360", "title": "Backend Engineer",
-         "company": "LinkedCo", "location": "Remote", "region": "LinkedIn", "content": "APIs"}])
 
     scanner.run_scan(cfg, companies)
 
     saved = json.loads(scanner.LAST_SCAN_FILE.read_text())
-    assert {j["company"] for j in saved} == {"Acme", "LinkedCo"}
-    state = scanner.load_state()
-    assert "4388146360" in state["seen_apify_job_ids"]
+    assert {j["company"] for j in saved} == {"Acme"}

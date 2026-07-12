@@ -139,7 +139,7 @@ def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict
         "contractType": apify_cfg.get("contractType", ["F", "C"]),
         "remote": apify_cfg.get("remote", ["2", "3"]),
     }
-    for key in ("datePosted", "companyName", "companyId", "urlPath", "urlParam"):
+    for key in ("datePosted", "companyName", "companyId", "urlPath", "urlParam", "keywords", "excludeKeywords"):
         if key in apify_cfg:
             run_input[key] = apify_cfg[key]
     skip_job_ids = set(str(job_id) for job_id in apify_cfg.get("skipJobId", []) if job_id)
@@ -156,6 +156,46 @@ def _first_present(item: dict, keys: list[str], default: str = "") -> str:
         if value:
             return str(value)
     return default
+
+
+def _value_from_mapping_or_object(source, *names):
+    for name in names:
+        if isinstance(source, dict) and source.get(name):
+            return source[name]
+        value = getattr(source, name, None)
+        if value:
+            return value
+    return None
+
+
+def _telegram_configured(config: dict) -> bool:
+    tg = config.get("telegram", {})
+    return _is_configured_secret(tg.get("token")) and _is_configured_secret(tg.get("chat_id"))
+
+
+def _term_in_text(term: str, text: str) -> bool:
+    term = term.strip()
+    if not term:
+        return False
+    if re.fullmatch(r"[A-Za-z0-9+#]+", term):
+        pattern = rf"(?<![A-Za-z0-9+#]){re.escape(term)}(?![A-Za-z0-9+#])"
+        return bool(re.search(pattern, text, re.IGNORECASE))
+    return term.lower() in text.lower()
+
+
+def _matches_apify_keyword_filters(job: dict, apify_cfg: dict) -> bool:
+    text = "\n".join(
+        str(job.get(key, ""))
+        for key in ("title", "company", "location", "snippet", "content", "stack")
+    )
+    exclude_keywords = [str(k) for k in apify_cfg.get("excludeKeywords", []) if k]
+    if any(_term_in_text(term, text) for term in exclude_keywords):
+        return False
+
+    keywords = [str(k) for k in apify_cfg.get("keywords", []) if k]
+    if keywords and not any(_term_in_text(term, text) for term in keywords):
+        return False
+    return True
 
 
 def _normalize_apify_job(item: dict) -> dict | None:
@@ -229,11 +269,12 @@ def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | 
     try:
         client = ApifyClient(token)
         run = client.actor(actor_id).call(run_input=run_input)
-        dataset_id = run.get("defaultDatasetId")
+        dataset_id = _value_from_mapping_or_object(run, "defaultDatasetId", "default_dataset_id")
         if not dataset_id:
             logger.warning("Apify LinkedIn run finished without a dataset id")
             return []
-        items = client.dataset(dataset_id).list_items().items
+        dataset_items = client.dataset(dataset_id).list_items()
+        items = _value_from_mapping_or_object(dataset_items, "items") or []
     except Exception as e:
         logger.error(f"Apify LinkedIn fetch failed: {e}")
         return []
@@ -242,7 +283,12 @@ def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | 
     seen_job_ids = seen_job_ids or set()
     for item in items:
         job = _normalize_apify_job(item)
-        if job and job["url"] not in seen_urls and job.get("linkedin_id") not in seen_job_ids:
+        if (
+            job
+            and job["url"] not in seen_urls
+            and job.get("linkedin_id") not in seen_job_ids
+            and _matches_apify_keyword_filters(job, apify_cfg)
+        ):
             jobs.append(job)
     logger.info("Apify LinkedIn: %d new job(s) from %d dataset item(s)", len(jobs), len(items))
     return jobs
@@ -400,7 +446,7 @@ def run_apify_scan(config: dict) -> None:
     csv_path = _export_to_csv(all_scored_jobs, "apify scan results") if all_scored_jobs else None
     date_str = datetime.now().strftime("%d %b %Y")
     tg = config.get("telegram", {})
-    telegram_configured = bool(tg.get("token") and tg.get("chat_id"))
+    telegram_configured = _telegram_configured(config)
 
     if errors and telegram_configured:
         error_msg = f"<b>Apify Job Hunt Errors — {date_str}</b>\n" + "\n".join(errors)
@@ -826,7 +872,7 @@ def run_scan(config: dict, companies: list[dict]) -> None:
 
     date_str = datetime.now().strftime("%d %b %Y")
     tg = config.get("telegram", {})
-    telegram_configured = bool(tg.get("token") and tg.get("chat_id"))
+    telegram_configured = _telegram_configured(config)
 
     # Always persist results to CSV when there are scored jobs ? this is the
     # durable record regardless of whether Telegram or Discord is configured.

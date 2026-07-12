@@ -11,6 +11,8 @@
     "experienceLevel": ["3", "4", "5"],
     "contractType": ["F", "C"],
     "remote": ["2", "3"],
+    "keywords": ["Node.js", "NestJS", "Express", "TypeScript", "JavaScript", "PHP", "Laravel", "React", "Angular"],
+    "excludeKeywords": ["Python", "Go", "Golang", "Django", "Flask"],
     "datePosted": "r604800",
     "skipJobId": []
   },
