@@ -35,6 +35,15 @@ def test_scan_dispatch(monkeypatch):
     assert ran["cfg"] == {"c": 1} and ran["co"] == ["co"]
 
 
+def test_apify_dispatch(monkeypatch):
+    monkeypatch.setattr(main, "load_config", lambda: {"c": 1})
+    ran = {}
+    monkeypatch.setattr("job_hunt.scanner.run_apify_scan", lambda cfg: ran.update(cfg=cfg))
+    _argv(monkeypatch, "apify")
+    main.main()
+    assert ran["cfg"] == {"c": 1}
+
+
 def test_service_dispatch(monkeypatch):
     ran = {}
     monkeypatch.setattr("job_hunt.service.run_service", lambda: ran.setdefault("ok", True))

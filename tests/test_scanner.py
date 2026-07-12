@@ -45,9 +45,10 @@ def test_format_telegram_message():
 
 def test_state_roundtrip(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    assert scanner.load_state() == {"seen_urls": []}
-    scanner.save_state({"seen_urls": ["a", "b"]})
+    assert scanner.load_state() == {"seen_urls": [], "seen_apify_job_ids": []}
+    scanner.save_state({"seen_urls": ["a", "b"], "seen_apify_job_ids": ["1"]})
     assert scanner.load_state()["seen_urls"] == ["a", "b"]
+    assert scanner.load_state()["seen_apify_job_ids"] == ["1"]
 
 
 # --- score_jobs ----------------------------------------------------------------
@@ -279,6 +280,36 @@ def test_run_scan_scoring_failure_fallback(scan_setup, monkeypatch):
     scanner.run_scan(cfg, companies)
     saved = json.loads(scanner.LAST_SCAN_FILE.read_text())
     assert saved  # unscored fallback saved
+
+
+def test_run_apify_scan(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "resume.md").write_text("Senior ML engineer, 10 YOE.")
+    monkeypatch.setattr(scanner, "fetch_apify_linkedin_jobs", lambda cfg, seen_urls, seen_ids: [
+        {"url": "https://linkedin.com/jobs/view/1", "linkedin_id": "4388146360",
+         "title": "Backend Engineer", "company": "LinkedCo", "location": "Remote",
+         "region": "LinkedIn", "content": "APIs"}])
+    monkeypatch.setattr(scanner, "score_jobs", lambda jobs, resume, cfg: [
+        {**jobs[0], "score": 91, "extracted_title": "Backend Engineer", "reason": "fit", "stack": "Python"}])
+
+    cfg = {
+        "tinyfish_api_key": "k",
+        "apify_api_token": "apify-real",
+        "apify_linkedin": {"enabled": True},
+        "candidate": {"name": "Ada", "resume_path": "resume.md", "min_score": 55, "top_n": 5},
+        "discord": {"webhook_url": "https://discord.com/api/webhooks/abc"},
+    }
+
+    sent = []
+    monkeypatch.setattr(scanner, "send_discord", lambda webhook, msg: sent.append((webhook, msg)) or True)
+
+    scanner.run_apify_scan(cfg)
+
+    saved = json.loads(scanner.LAST_SCAN_FILE.read_text())
+    assert saved and saved[0]["score"] == 91
+    state = scanner.load_state()
+    assert "4388146360" in state["seen_apify_job_ids"]
+    assert sent
 
 
 def test_run_scan_includes_apify_jobs(scan_setup, monkeypatch):

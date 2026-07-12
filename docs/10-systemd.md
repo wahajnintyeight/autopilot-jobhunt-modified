@@ -18,6 +18,7 @@ python3.11 -m venv .venv
 Edit `config.json` and `.env` in that directory. Set:
 
 - `tinyfish_api_key`
+- `apify_api_token`
 - `openrouter_api_key` or another LLM backend
 - `service.timezone`
 - `service.schedules`
@@ -28,8 +29,8 @@ Example schedules:
 "service": {
   "timezone": "Asia/Karachi",
   "schedules": [
-    { "name": "morning_scan", "action": "scan", "cron": "30 2 * * *" },
-    { "name": "evening_scan", "action": "scan", "cron": "30 14 * * *" }
+    { "name": "apify_scan_hourly", "action": "apify_scan", "cron": "0 * * * *" },
+    { "name": "careers_scan_3h", "action": "scan", "cron": "0 */3 * * *" }
   ]
 }
 ```
@@ -65,7 +66,7 @@ systemctl restart autopilot-jobhunt
 
 ## Notes
 
-- `autopilot scan` still works for manual runs.
+- `autopilot scan` still works for manual runs, and `autopilot apify` runs the LinkedIn scrape on its own.
 - The service uses one Python process with multiple cron jobs. That is enough for a
   single VPS.
 - If you want a different install path, keep the repo and venv paths consistent in the

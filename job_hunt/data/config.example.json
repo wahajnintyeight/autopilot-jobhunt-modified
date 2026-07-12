@@ -44,14 +44,14 @@
     "timezone": "Asia/Karachi",
     "schedules": [
       {
-        "name": "nightly_scan",
-        "action": "scan",
-        "cron": "30 2 * * *"
+        "name": "apify_scan_hourly",
+        "action": "apify_scan",
+        "cron": "0 * * * *"
       },
       {
-        "name": "evening_scan",
+        "name": "scan_every_3_hours",
         "action": "scan",
-        "cron": "30 14 * * *"
+        "cron": "0 */3 * * *"
       }
     ]
   },

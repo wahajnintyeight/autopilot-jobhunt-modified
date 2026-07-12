@@ -99,6 +99,7 @@ Every configured schedule:
   └─────────────────────────────────────────────────────────┘
 
 On demand:
+  autopilot apify   →  Apify LinkedIn scrape + scoring + notifications
   autopilot draft 1  →  tailored resume + cover letter in 60s
 ```
 
@@ -315,8 +316,10 @@ The LLM reads your full resume + the full job description and assigns a score 0�
 Set `min_score` in config to filter. Default: 60.
 
 The scheduler uses `service.schedules` in `config.json`. In the current checked-in
-config, `scan_every_3_hours` runs with `cron: "0 */3 * * *"`. If you remove the custom
-schedule, the service falls back to a single daily scan at `30 2 * * *`.
+config, `apify_scan_hourly` runs every hour with `cron: "0 * * * *"` and
+`scan_every_3_hours` runs with `cron: "0 */3 * * *"`. If you remove the custom
+schedule, the service falls back to the same hourly Apify scrape plus the 3-hour
+careers scan.
 
 ---
 

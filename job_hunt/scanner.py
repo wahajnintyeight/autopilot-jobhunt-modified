@@ -108,7 +108,7 @@ def is_ats_listing(url: str) -> bool:
 def load_state() -> dict:
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text())
-    return {"seen_urls": []}
+    return {"seen_urls": [], "seen_apify_job_ids": []}
 
 
 def save_state(state: dict) -> None:
@@ -246,6 +246,184 @@ def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | 
             jobs.append(job)
     logger.info("Apify LinkedIn: %d new job(s) from %d dataset item(s)", len(jobs), len(items))
     return jobs
+
+
+def _score_and_publish_jobs(
+    jobs: list[dict],
+    resume: str,
+    config: dict,
+    *,
+    source_label: str,
+    state: dict | None = None,
+    seen_urls: set[str] | None = None,
+    seen_apify_job_ids: set[str] | None = None,
+    all_scored_jobs: list[dict] | None = None,
+    errors: list[str] | None = None,
+    min_score: int = 55,
+    top_n: int = 5,
+    discord_configured: bool = False,
+    discord_webhook: str | None = None,
+) -> list[dict]:
+    if not jobs:
+        return []
+
+    if seen_urls is not None:
+        seen_urls.update(j["url"] for j in jobs if j.get("url"))
+    if seen_apify_job_ids is not None:
+        seen_apify_job_ids.update(j["linkedin_id"] for j in jobs if j.get("linkedin_id"))
+    if state is not None and (seen_urls is not None or seen_apify_job_ids is not None):
+        if seen_urls is not None:
+            state["seen_urls"] = list(seen_urls)
+        if seen_apify_job_ids is not None:
+            state["seen_apify_job_ids"] = list(seen_apify_job_ids)
+        save_state(state)
+
+    logger.info("%s: scoring %d job(s)...", source_label, len(jobs))
+    try:
+        scored: list[dict] = []
+        for i in range(0, len(jobs), 10):
+            batch = jobs[i: i + 10]
+            logger.debug("%s: scoring batch %d (%d jobs)...", source_label, i // 10 + 1, len(batch))
+            scored.extend(score_jobs(batch, resume, config))
+    except Exception as score_err:
+        logger.error("%s scoring failed: %s", source_label, score_err)
+        if errors is not None:
+            errors.append(f"⚠️ Scoring failed for {source_label}: {score_err}")
+        scored = jobs
+
+    if scored:
+        if all_scored_jobs is not None:
+            all_scored_jobs.extend(scored)
+        titles = [j.get("extracted_title") or j.get("title", "?") for j in scored[:3]]
+        logger.info(
+            "%s: %d job(s) saved: %s%s",
+            source_label,
+            len(scored),
+            ", ".join(titles),
+            " ..." if len(scored) > 3 else "",
+        )
+        discord_jobs = sorted(
+            [j for j in scored if j.get("score", 0) >= min_score],
+            key=lambda x: x.get("score", 0),
+            reverse=True,
+        )[:top_n]
+        if discord_configured and discord_jobs and discord_webhook:
+            date_str = datetime.now().strftime("%d %b %Y")
+            sent = send_discord(discord_webhook, format_discord_message(discord_jobs, date_str))
+            if sent:
+                logger.info("%s: Discord notification sent for scored jobs.", source_label)
+            else:
+                logger.warning("%s: Discord send failed for scored jobs.", source_label)
+    return scored
+
+
+def run_apify_scan(config: dict) -> None:
+    scan_start = time.time()
+    logger.info("=== Apify LinkedIn scan started ===")
+    logger.info("Candidate: %s", config.get("candidate", {}).get("name", "unknown"))
+    logger.info("Min score: %s | Top N: %s", config.get("candidate", {}).get("min_score", 55), config.get("candidate", {}).get("top_n", 5))
+
+    min_score = config.get("candidate", {}).get("min_score", 55)
+    top_n = config.get("candidate", {}).get("top_n", 5)
+    discord = config.get("discord", {})
+    discord_webhook = discord.get("webhook_url")
+    discord_configured = bool(discord_webhook)
+
+    resume_path = Path(config.get("candidate", {}).get("resume_path", "resume/YOUR_RESUME.md"))
+    resume = resume_path.read_text()
+    logger.debug(f"Resume loaded: {resume_path} ({len(resume)} chars)")
+
+    state = load_state()
+    seen_urls: set = set(state.get("seen_urls", []))
+    seen_apify_job_ids: set = set(state.get("seen_apify_job_ids", []))
+    logger.info(
+        "State loaded — %d previously seen URLs, %d Apify LinkedIn job IDs",
+        len(seen_urls),
+        len(seen_apify_job_ids),
+    )
+
+    all_scored_jobs: list[dict] = []
+    errors: list[str] = []
+
+    apify_jobs = fetch_apify_linkedin_jobs(config, seen_urls, seen_apify_job_ids)
+    _score_and_publish_jobs(
+        apify_jobs,
+        resume,
+        config,
+        source_label="Apify LinkedIn",
+        state=state,
+        seen_urls=seen_urls,
+        seen_apify_job_ids=seen_apify_job_ids,
+        all_scored_jobs=all_scored_jobs,
+        errors=errors,
+        min_score=min_score,
+        top_n=top_n,
+        discord_configured=discord_configured,
+        discord_webhook=discord_webhook,
+    )
+
+    state["seen_urls"] = list(seen_urls)
+    state["seen_apify_job_ids"] = list(seen_apify_job_ids)
+    state["last_scan"] = datetime.now(timezone.utc).isoformat()
+    save_state(state)
+    logger.debug("State saved")
+
+    scan_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    for job in all_scored_jobs:
+        job["scan_date"] = scan_date
+
+    LAST_SCAN_FILE.parent.mkdir(exist_ok=True)
+    LAST_SCAN_FILE.write_text(json.dumps(all_scored_jobs, indent=2))
+    logger.debug(f"Last scan saved: {len(all_scored_jobs)} total jobs → {LAST_SCAN_FILE}")
+
+    history: list[dict] = []
+    if JOB_HISTORY_FILE.exists():
+        try:
+            history = json.loads(JOB_HISTORY_FILE.read_text())
+        except Exception:
+            history = []
+    existing_urls = {j["url"] for j in history}
+    new_entries = [j for j in all_scored_jobs if j["url"] not in existing_urls]
+    history.extend(new_entries)
+    JOB_HISTORY_FILE.write_text(json.dumps(history, indent=2))
+    logger.debug(f"Job history updated: +{len(new_entries)} new entries ({len(history)} total)")
+
+    elapsed = time.time() - scan_start
+    top_jobs = sorted([j for j in all_scored_jobs if j.get("score", 0) >= min_score], key=lambda x: x.get("score", 0), reverse=True)[:top_n]
+    logger.info(
+        f"=== Apify LinkedIn scan complete — {len(all_scored_jobs)} jobs found, {len(top_jobs)} top matches "
+        f"({elapsed / 60:.1f} min) ==="
+    )
+    if errors:
+        logger.info("Apify LinkedIn scan recorded %d error(s).", len(errors))
+
+    csv_path = _export_to_csv(all_scored_jobs, "apify scan results") if all_scored_jobs else None
+    date_str = datetime.now().strftime("%d %b %Y")
+    tg = config.get("telegram", {})
+    telegram_configured = bool(tg.get("token") and tg.get("chat_id"))
+
+    if errors and telegram_configured:
+        error_msg = f"<b>Apify Job Hunt Errors — {date_str}</b>\n" + "\n".join(errors)
+        send_telegram(tg["token"], tg["chat_id"], error_msg)
+
+    if not top_jobs:
+        logger.info("No matching Apify jobs found today.")
+        if telegram_configured:
+            msg = f"<b>Apify Job Hunt — {date_str}</b>\nNo new matches today."
+            send_telegram(tg["token"], tg["chat_id"], msg)
+        return
+    logger.info("Apify CSV saved: %s", csv_path)
+
+    msg = format_telegram_message(top_jobs, date_str)
+    logger.info("\n" + msg)
+    if telegram_configured:
+        sent = send_telegram(tg["token"], tg["chat_id"], msg)
+        if sent:
+            logger.info(f"Apify Telegram notification sent. Results also saved to CSV: {csv_path}")
+        else:
+            logger.warning(f"Apify Telegram send failed — results saved to CSV: {csv_path}")
+    else:
+        logger.info(f"Apify Telegram not configured — results saved to CSV: {csv_path}")
 
 
 def _fetch_with_ratelimit(tf: TinyFish, urls: list[str], **kwargs):
@@ -543,45 +721,6 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     errors: list[str] = []
     companies_scanned = 0
     companies_with_jobs = 0
-
-    apify_jobs = fetch_apify_linkedin_jobs(config, seen_urls, seen_apify_job_ids)
-    if apify_jobs:
-        seen_urls.update(j["url"] for j in apify_jobs)
-        seen_apify_job_ids.update(j["linkedin_id"] for j in apify_jobs if j.get("linkedin_id"))
-        state["seen_urls"] = list(seen_urls)
-        state["seen_apify_job_ids"] = list(seen_apify_job_ids)
-        save_state(state)
-        logger.info(f"Apify LinkedIn: scoring {len(apify_jobs)} job(s)...")
-        try:
-            apify_scored: list[dict] = []
-            for i in range(0, len(apify_jobs), 10):
-                batch = apify_jobs[i: i + 10]
-                logger.debug(f"Apify LinkedIn: scoring batch {i // 10 + 1} ({len(batch)} jobs)...")
-                apify_scored.extend(score_jobs(batch, resume, config))
-        except Exception as score_err:
-            logger.error(f"Apify LinkedIn scoring failed: {score_err}")
-            errors.append(f"⚠️ Scoring failed for Apify LinkedIn: {score_err}")
-            apify_scored = apify_jobs
-
-        if apify_scored:
-            all_scored_jobs.extend(apify_scored)
-            titles = [j.get("extracted_title") or j.get("title", "?") for j in apify_scored[:3]]
-            logger.info(
-                f"Apify LinkedIn: {len(apify_scored)} job(s) saved: "
-                f"{', '.join(titles)}{' ...' if len(apify_scored) > 3 else ''}"
-            )
-            discord_jobs = sorted(
-                [j for j in apify_scored if j.get("score", 0) >= min_score],
-                key=lambda x: x.get("score", 0),
-                reverse=True,
-            )[:top_n]
-            if discord_configured and discord_jobs:
-                date_str = datetime.now().strftime("%d %b %Y")
-                sent = send_discord(discord_webhook, format_discord_message(discord_jobs, date_str))
-                if sent:
-                    logger.info("Apify LinkedIn: Discord notification sent for scored jobs.")
-                else:
-                    logger.warning("Apify LinkedIn: Discord send failed for scored jobs.")
 
     for idx, company in enumerate(companies, 1):
         logger.info(f"[{idx}/{total}] Scanning {company['name']}...")

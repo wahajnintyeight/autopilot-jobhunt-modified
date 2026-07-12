@@ -9,8 +9,9 @@
 | `claude binary not found in PATH` | Claude CLI not installed / not on PATH | install from [claude.ai/code](https://claude.ai/code); check `which claude` |
 | `claude CLI exited 1` | not authenticated | `claude auth login`, then retry; confirm with `claude --print "hi"` |
 | `autopilot: command not found` | install incomplete / wrong venv | re-run `pip install -e '.[mcp]'` from the repo, or activate the right venv |
+| No Apify LinkedIn results | `APIFY_API_TOKEN` missing / invalid, or the actor returned no jobs | add the token to `.env`, confirm the Apify actor input, or lower the filters ([05](05-integrations.md)) |
 | No Telegram / Discord notification | token/chat_id missing or webhook wrong | expected if unset — scan still completes, results in the CSV; if set, re-check the Telegram values or Discord webhook ([05](05-integrations.md)) |
-| Scan takes 30–90 min | normal free-tier pacing | let it run; automate nightly with `bash setup_cron.sh` |
+| Scan takes 30–90 min | normal free-tier pacing | let it run; use the scheduler service or a custom cron cadence |
 | "No new job URLs found" | TinyFish found nothing new for that company today | not an error |
 | "0 jobs saved" | jobs found but all below `min_score` | lower `min_score` in `config.json` if too strict |
 | `python3 --version` < 3.11 | Python too old | install 3.11+ via [pyenv](https://github.com/pyenv/pyenv) |

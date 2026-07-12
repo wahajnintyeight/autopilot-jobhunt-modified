@@ -4,7 +4,7 @@ Two files hold your setup. Both are gitignored; copy them from the committed exa
 
 | File | Holds | Copy from |
 |---|---|---|
-| `config.json` | candidate profile, LLM provider, scoring thresholds, Telegram | `config.example.json` |
+| `config.json` | candidate profile, LLM provider, scoring thresholds, Telegram, Discord, Apify source settings | `config.example.json` |
 | `.env` | API keys | `.env.example` |
 
 `autopilot init` writes both for you. `.env` values override `config.json`, except that
@@ -17,6 +17,7 @@ The scoring quality depends on this section — the LLM reads it plus your full 
 ```jsonc
 {
   "tinyfish_api_key": "sk-tinyfish-...",
+  "apify_api_token": "apify_api_...",
   "openrouter_api_key": "sk-or-v1-...",
   "llm_provider": "openrouter",
   "candidate": {
@@ -26,7 +27,7 @@ The scoring quality depends on this section — the LLM reads it plus your full 
     "seeking": "Remote EU or NA roles, open to relocation",   // positive signal — scores higher
     "not_suitable": "Junior roles, pure front-end, no-ML SWE", // negative filter — scores lower
     "min_score": 65,   // jobs below this are not saved or drafted
-    "top_n": 5         // how many top matches go in the Telegram notification
+    "top_n": 5         // how many top matches go in the Telegram / Discord notification
   }
 }
 ```
@@ -52,10 +53,35 @@ prompt):
 
 - **`min_score`** — the save/draft threshold. 60–70 is a good starting range. Jobs below
   it are discarded from results.
-- **`top_n`** — how many of the passing matches are pushed to Telegram (all passing jobs
+- **`top_n`** — how many of the passing matches are pushed to Telegram / Discord (all passing jobs
   still land in the CSV and `last_scan.json`).
 
 Tune `min_score` up if you get too many marginal matches, down if you get too few.
+
+## Apify LinkedIn source
+
+If enabled in `config.json`, the Apify `linkedin-jobs-scraper` actor runs on its own
+hourly schedule and feeds into the same scoring and notification pipeline.
+
+```jsonc
+{
+  "apify_linkedin": {
+    "enabled": true,
+    "actor_id": "valig/linkedin-jobs-scraper",
+    "title": "backend engineer OR full stack engineer OR nodejs engineer OR php developer",
+    "location": "European Union",
+    "limit": 100,
+    "datePosted": "r604800",
+    "skipJobId": []
+  }
+}
+```
+
+- `seen_apify_job_ids` is stored in `state/seen_jobs.json` so repeat LinkedIn jobs are
+  skipped on the next Apify run.
+- `skipJobId` in config is merged with the stored IDs before the actor is called.
+- Apify results are scored, saved, exported, and notified the same way as careers-page
+  results.
 
 ## Provider selection
 

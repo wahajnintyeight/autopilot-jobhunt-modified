@@ -13,7 +13,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from job_hunt.log import get_logger
 from job_hunt.main import export_jobs, load_companies, load_config
-from job_hunt.scanner import run_scan
+from job_hunt.scanner import run_apify_scan, run_scan
 
 logger = get_logger("autopilot.service")
 
@@ -29,7 +29,10 @@ class ScheduledTask:
 
 
 def _default_tasks() -> list[ScheduledTask]:
-    return [ScheduledTask(name="nightly_scan", action="scan", cron="30 2 * * *")]
+    return [
+        ScheduledTask(name="apify_scan_hourly", action="apify_scan", cron="0 * * * *"),
+        ScheduledTask(name="careers_scan_3h", action="scan", cron="0 */3 * * *"),
+    ]
 
 
 def _load_tasks(config: dict) -> list[ScheduledTask]:
@@ -67,6 +70,11 @@ def _scan_task() -> None:
     run_scan(config, companies)
 
 
+def _apify_scan_task() -> None:
+    config = load_config()
+    run_apify_scan(config)
+
+
 def _export_task(min_score: int = 0, days: int = 0) -> None:
     export_jobs(min_score=min_score, days=days)
 
@@ -74,6 +82,9 @@ def _export_task(min_score: int = 0, days: int = 0) -> None:
 def _execute(task: ScheduledTask) -> None:
     if task.action == "scan":
         _run_with_lock(task.name, _scan_task)
+        return
+    if task.action == "apify_scan":
+        _run_with_lock(task.name, _apify_scan_task)
         return
     if task.action == "export":
         args = task.args or {}

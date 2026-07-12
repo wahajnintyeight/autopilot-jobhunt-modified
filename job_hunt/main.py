@@ -9,6 +9,7 @@ Usage:
   autopilot export --min 60   — export only jobs with score >= 60
   autopilot export --days 7   — export jobs from last 7 days (requires scan history)
   autopilot export --days 7 --min 60  — combine filters
+  autopilot apify            — run the Apify LinkedIn scrape + scoring pipeline
   autopilot mcp               — run the MCP server over stdio (for Claude Code)
 """
 import csv
@@ -282,6 +283,10 @@ def main() -> None:
         from job_hunt.scanner import run_scan
         run_scan(config, load_companies())
 
+    elif cmd == "apify":
+        from job_hunt.scanner import run_apify_scan
+        run_apify_scan(config)
+
     elif cmd == "draft":
         if len(sys.argv) < 3:
             sys.exit("Usage: autopilot draft #N  or  autopilot draft URL")
@@ -289,7 +294,7 @@ def main() -> None:
         draft_application(config, sys.argv[2])
 
     else:
-        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | service | logs | draft | export | mcp")
+        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | apify | service | logs | draft | export | mcp")
 
 
 if __name__ == "__main__":

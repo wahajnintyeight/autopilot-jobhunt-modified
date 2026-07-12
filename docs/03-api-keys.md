@@ -1,6 +1,7 @@
 # 03 — API keys
 
-Two keys get you scanning. Both have free tiers.
+TinyFish and OpenRouter get you scanning. Apify is optional if you want the LinkedIn
+source. All three have free tiers or free-tier access.
 
 ## TinyFish (required · free)
 
@@ -24,6 +25,19 @@ Provides the scoring/drafting models (default backend). Skip this if you use
 2. **Keys** → **Create key**.
 3. Copy the key (starts with `sk-or-v1-…`).
 
+## Apify (optional · free tier available)
+
+Apify powers the optional LinkedIn jobs scraper.
+
+1. Sign up at [apify.com](https://apify.com).
+2. Open your account settings or API tokens page.
+3. Copy the API token.
+
+## Discord (optional · free)
+
+If you want Discord notifications, create a webhook for your target channel and copy
+the webhook URL.
+
 ## Where the keys go
 
 Put keys in `.env` (gitignored), or directly in `config.json` (also gitignored). `.env`
@@ -33,11 +47,13 @@ real value in `config.json`.
 ```bash
 # .env
 TINYFISH_API_KEY=sk-tinyfish-your-key-here
+APIFY_API_TOKEN=apify-your-token-here
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
 
-# optional — Telegram (see 05-integrations.md)
+# optional — Telegram / Discord (see 05-integrations.md)
 TELEGRAM_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_numeric_chat_id_here
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
 > **`.env` and `config.json` are gitignored — never commit them.** If a key is ever
