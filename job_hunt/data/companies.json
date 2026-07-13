@@ -943,5 +943,362 @@
     "search_domain": "grantthornton.global",
     "location": "Global / Relocation / Remote",
     "region": "EU"
+  },
+  {
+    "name": "LaraJobs",
+    "careers_url": "https://larajobs.com/",
+    "search_domain": "larajobs.com",
+    "location": "Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "NVIDIA",
+    "careers_url": "https://www.nvidia.com/en-us/about-nvidia/careers/",
+    "search_domain": "nvidia.com",
+    "location": "Santa Clara, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Google",
+    "careers_url": "https://careers.google.com/",
+    "search_domain": "careers.google.com",
+    "location": "Mountain View, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Microsoft",
+    "careers_url": "https://jobs.careers.microsoft.com/",
+    "search_domain": "apply.careers.microsoft.com",
+    "location": "Redmond, WA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Meta",
+    "careers_url": "https://www.metacareers.com/",
+    "search_domain": "metacareers.com",
+    "location": "Menlo Park, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Cisco",
+    "careers_url": "https://jobs.cisco.com/jobs/SearchJobs",
+    "search_domain": "jobs.cisco.com",
+    "location": "San Jose, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Salesforce",
+    "careers_url": "https://careers.salesforce.com/en/",
+    "search_domain": "salesforce.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Mastercard",
+    "careers_url": "https://careers.mastercard.com/",
+    "search_domain": "careers.mastercard.com",
+    "location": "Purchase, NY / Remote",
+    "region": "US"
+  },
+  {
+    "name": "S&P Global",
+    "careers_url": "https://careers.spglobal.com/",
+    "search_domain": "careers.spglobal.com",
+    "location": "New York, NY / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Johnson & Johnson",
+    "careers_url": "https://www.careers.jnj.com/",
+    "search_domain": "careers.jnj.com",
+    "location": "New Brunswick, NJ / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Eli Lilly",
+    "careers_url": "https://careers.lilly.com/",
+    "search_domain": "careers.lilly.com",
+    "location": "Indianapolis, IN / Remote",
+    "region": "US"
+  },
+  {
+    "name": "AMD",
+    "careers_url": "https://www.amd.com/en/corporate/careers",
+    "search_domain": "amd.com",
+    "location": "Santa Clara, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Apple",
+    "careers_url": "https://jobs.apple.com/en-us/search",
+    "search_domain": "jobs.apple.com",
+    "location": "Cupertino, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Visa",
+    "careers_url": "https://www.visa.com/careers.html",
+    "search_domain": "visa.com",
+    "location": "Foster City, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Amazon",
+    "careers_url": "https://www.amazon.jobs/en/",
+    "search_domain": "amazon.jobs",
+    "location": "Seattle, WA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "IBM",
+    "careers_url": "https://www.ibm.com/careers",
+    "search_domain": "ibm.com",
+    "location": "Armonk, NY / Remote",
+    "region": "US"
+  },
+  {
+    "name": "ServiceNow",
+    "careers_url": "https://careers.servicenow.com/",
+    "search_domain": "careers.servicenow.com",
+    "location": "Santa Clara, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Adobe",
+    "careers_url": "https://careers.adobe.com/",
+    "search_domain": "careers.adobe.com",
+    "location": "San Jose, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Oracle",
+    "careers_url": "https://www.oracle.com/careers/",
+    "search_domain": "oracle.com",
+    "location": "Austin, TX / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Intuit",
+    "careers_url": "https://jobs.intuit.com/",
+    "search_domain": "jobs.intuit.com",
+    "location": "Mountain View, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "PayPal",
+    "careers_url": "https://jobs.paypal-corp.com/",
+    "search_domain": "jobs.paypal-corp.com",
+    "location": "San Jose, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Qualcomm",
+    "careers_url": "https://www.qualcomm.com/company/careers",
+    "search_domain": "qualcomm.com",
+    "location": "San Diego, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Broadcom",
+    "careers_url": "https://jobs.broadcom.com/",
+    "search_domain": "jobs.broadcom.com",
+    "location": "San Jose, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Netflix",
+    "careers_url": "https://jobs.netflix.com/",
+    "search_domain": "jobs.netflix.com",
+    "location": "Los Gatos, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Uber",
+    "careers_url": "https://www.uber.com/careers/",
+    "search_domain": "uber.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Shopify",
+    "careers_url": "https://www.shopify.com/careers",
+    "search_domain": "shopify.com",
+    "location": "Ottawa, Canada / Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "Snowflake",
+    "careers_url": "https://careers.snowflake.com/",
+    "search_domain": "careers.snowflake.com",
+    "location": "Bellevue, WA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Datadog",
+    "careers_url": "https://careers.datadoghq.com/",
+    "search_domain": "careers.datadoghq.com",
+    "location": "New York, NY / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Atlassian",
+    "careers_url": "https://www.atlassian.com/company/careers",
+    "search_domain": "atlassian.com",
+    "location": "Sydney, Australia / Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "Zoom",
+    "careers_url": "https://careers.zoom.us/",
+    "search_domain": "careers.zoom.us",
+    "location": "San Jose, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Dropbox",
+    "careers_url": "https://jobs.dropbox.com/",
+    "search_domain": "dropbox.jobs",
+    "location": "Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "Twilio",
+    "careers_url": "https://www.twilio.com/company/jobs",
+    "search_domain": "jobs.twilio.com",
+    "location": "Remote / San Francisco, CA",
+    "region": "US"
+  },
+  {
+    "name": "Workday",
+    "careers_url": "https://www.workday.com/en-us/company/careers.html",
+    "search_domain": "workday.com",
+    "location": "Pleasanton, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Okta",
+    "careers_url": "https://www.okta.com/company/careers/",
+    "search_domain": "okta.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "HubSpot",
+    "careers_url": "https://www.hubspot.com/careers",
+    "search_domain": "hubspot.com",
+    "location": "Cambridge, MA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Autodesk",
+    "careers_url": "https://www.autodesk.com/careers",
+    "search_domain": "autodesk.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Block",
+    "careers_url": "https://block.xyz/careers",
+    "search_domain": "block.xyz",
+    "location": "Oakland, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Stripe",
+    "careers_url": "https://stripe.com/jobs",
+    "search_domain": "stripe.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Coinbase",
+    "careers_url": "https://www.coinbase.com/careers",
+    "search_domain": "coinbase.com",
+    "location": "Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "Cloudflare",
+    "careers_url": "https://www.cloudflare.com/careers/",
+    "search_domain": "cloudflare.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Palo Alto Networks",
+    "careers_url": "https://jobs.paloaltonetworks.com/",
+    "search_domain": "jobs.paloaltonetworks.com",
+    "location": "Santa Clara, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "SentinelOne",
+    "careers_url": "https://www.sentinelone.com/careers/",
+    "search_domain": "sentinelone.com",
+    "location": "Mountain View, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Roblox",
+    "careers_url": "https://careers.roblox.com/",
+    "search_domain": "careers.roblox.com",
+    "location": "San Mateo, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "OpenAI",
+    "careers_url": "https://openai.com/careers/",
+    "search_domain": "openai.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Anthropic",
+    "careers_url": "https://www.anthropic.com/careers",
+    "search_domain": "anthropic.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Perplexity",
+    "careers_url": "https://www.perplexity.ai/careers",
+    "search_domain": "perplexity.ai",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Figma",
+    "careers_url": "https://www.figma.com/careers/",
+    "search_domain": "figma.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Notion",
+    "careers_url": "https://www.notion.com/careers",
+    "search_domain": "notion.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Airtable",
+    "careers_url": "https://airtable.com/careers",
+    "search_domain": "airtable.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "Vercel",
+    "careers_url": "https://vercel.com/careers",
+    "search_domain": "vercel.com",
+    "location": "San Francisco, CA / Remote",
+    "region": "US"
+  },
+  {
+    "name": "MongoDB",
+    "careers_url": "https://www.mongodb.com/careers",
+    "search_domain": "mongodb.com",
+    "location": "New York, NY / Remote",
+    "region": "US"
   }
 ]
