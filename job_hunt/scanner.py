@@ -322,7 +322,10 @@ def fetch_apify_linkedin_jobs(config: dict, seen_urls: set, seen_job_ids: set | 
 
     try:
         client = ApifyClient(token)
-        run = client.actor(actor_id).call(run_input=run_input)
+        # Disable Apify's redirected log streaming here. The client spawns a background
+        # thread for streamed logs by default, and that thread can emit noisy timeout
+        # tracebacks even when the actor run itself succeeds.
+        run = client.actor(actor_id).call(run_input=run_input, logger=None)
         dataset_id = _value_from_mapping_or_object(run, "defaultDatasetId", "default_dataset_id")
         if not dataset_id:
             logger.warning("Apify LinkedIn run finished without a dataset id")

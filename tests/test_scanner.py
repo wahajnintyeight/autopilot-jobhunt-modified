@@ -172,9 +172,10 @@ def test_fetch_apify_linkedin_jobs(monkeypatch):
             ])
 
     class FakeActor:
-        def call(self, run_input=None):
+        def call(self, run_input=None, logger="default"):
             assert run_input["limit"] == 2
             assert run_input["skipJobId"] == ["config-id", "old-id"]
+            assert logger is None
             return {"defaultDatasetId": "ds1"}
 
     class FakeClient:
