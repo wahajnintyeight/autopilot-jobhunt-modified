@@ -61,7 +61,7 @@ Tune `min_score` up if you get too many marginal matches, down if you get too fe
 ## Apify LinkedIn source
 
 If enabled in `config.json`, the Apify `linkedin-jobs-scraper` actor runs on its own
-hourly schedule and feeds into the same scoring and notification pipeline.
+10-hour schedule and feeds into the same scoring and notification pipeline.
 
 ```jsonc
 {
@@ -71,7 +71,7 @@ hourly schedule and feeds into the same scoring and notification pipeline.
     "title": "backend engineer OR full stack engineer OR nodejs engineer OR php developer",
     "location": "European Union",
     "limit": 100,
-    "datePosted": "r604800",
+    "datePosted": "r54000",
     "skipJobId": []
   }
 }

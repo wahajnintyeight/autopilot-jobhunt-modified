@@ -30,7 +30,7 @@ class ScheduledTask:
 
 def _default_tasks() -> list[ScheduledTask]:
     return [
-        ScheduledTask(name="apify_scan_hourly", action="apify_scan", cron="0 * * * *"),
+        ScheduledTask(name="apify_scan_10h", action="apify_scan", cron="0 */10 * * *"),
         ScheduledTask(name="careers_scan_3h", action="scan", cron="0 */3 * * *"),
     ]
 

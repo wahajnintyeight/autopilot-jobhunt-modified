@@ -29,7 +29,7 @@ Example schedules:
 "service": {
   "timezone": "Asia/Karachi",
   "schedules": [
-    { "name": "apify_scan_hourly", "action": "apify_scan", "cron": "0 * * * *" },
+    { "name": "apify_scan_10h", "action": "apify_scan", "cron": "0 */10 * * *" },
     { "name": "careers_scan_3h", "action": "scan", "cron": "0 */3 * * *" }
   ]
 }

@@ -143,7 +143,7 @@ def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict
         if key in apify_cfg:
             run_input[key] = apify_cfg[key]
     if "datePosted" not in run_input:
-        run_input["datePosted"] = "r86400"
+        run_input["datePosted"] = "r54000"
     skip_job_ids = set(str(job_id) for job_id in apify_cfg.get("skipJobId", []) if job_id)
     if seen_job_ids:
         skip_job_ids.update(str(job_id) for job_id in seen_job_ids if job_id)
@@ -242,7 +242,7 @@ def _matches_apify_freshness_and_applicant_limits(item: dict, apify_cfg: dict) -
     if applicant_count is not None and applicant_count >= max_applicants:
         return False
 
-    max_age_hours = int(apify_cfg.get("maxAgeHours", 24))
+    max_age_hours = int(apify_cfg.get("maxAgeHours", 15))
     posted_dt = _parse_posted_date(item)
     if posted_dt is not None:
         age_hours = (datetime.now(UTC) - posted_dt).total_seconds() / 3600

@@ -278,7 +278,7 @@ Add this to `config.json`:
     "experienceLevel": ["3", "4", "5"],
     "contractType": ["F", "C"],
     "remote": ["2", "3"],
-    "datePosted": "r604800",
+    "datePosted": "r54000",
     "skipJobId": []
   }
 }
@@ -316,9 +316,9 @@ The LLM reads your full resume + the full job description and assigns a score 0â
 Set `min_score` in config to filter. Default: 60.
 
 The scheduler uses `service.schedules` in `config.json`. In the current checked-in
-config, `apify_scan_hourly` runs every hour with `cron: "0 * * * *"` and
+config, `apify_scan_10h` runs every 10 hours with `cron: "0 */10 * * *"` and
 `scan_every_3_hours` runs with `cron: "0 */3 * * *"`. If you remove the custom
-schedule, the service falls back to the same hourly Apify scrape plus the 3-hour
+schedule, the service falls back to the same 10-hour Apify scrape plus the 3-hour
 careers scan.
 
 ---

@@ -235,7 +235,7 @@ def test_fetch_apify_linkedin_jobs_accepts_run_object(monkeypatch):
 
 def test_apify_run_input_passes_optional_actor_fields():
     cfg = {"apify_linkedin": {
-        "datePosted": "r604800",
+        "datePosted": "r54000",
         "companyName": ["Google"],
         "companyId": ["1441"],
         "urlPath": "/jobs/search",
@@ -246,7 +246,7 @@ def test_apify_run_input_passes_optional_actor_fields():
 
     out = scanner._apify_run_input(cfg, {"4219847745"})
 
-    assert out["datePosted"] == "r604800"
+    assert out["datePosted"] == "r54000"
     assert out["companyName"] == ["Google"]
     assert out["companyId"] == ["1441"]
     assert out["urlPath"] == "/jobs/search"
@@ -276,7 +276,7 @@ def test_apify_keyword_filters_exclude_go_and_require_keywords():
 
 
 def test_apify_freshness_and_applicant_limits():
-    cfg = {"maxApplicants": 20, "maxAgeHours": 24}
+    cfg = {"maxApplicants": 20, "maxAgeHours": 15}
     assert scanner._matches_apify_freshness_and_applicant_limits(
         {"applicationsCount": "19 applicants", "postedDate": "2026-07-12T00:00:00.000Z"},
         cfg,
