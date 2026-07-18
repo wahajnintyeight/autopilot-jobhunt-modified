@@ -37,11 +37,30 @@ ATS_LISTING_RE = re.compile(
     re.IGNORECASE,
 )
 
-SEARCH_QUERY = (
-    'site:{domain} (senior OR staff OR principal OR lead) '
-    '("data scientist" OR "ML engineer" OR "machine learning engineer" '
-    'OR "AI engineer" OR MLOps OR "deep learning")'
-)
+DEFAULT_INCLUDED_TITLE_TERMS = [
+    "backend engineer",
+    "backend developer",
+    "nodejs engineer",
+    "node.js developer",
+    "php developer",
+    "php engineer",
+    "full stack engineer",
+    "full stack developer",
+]
+
+DEFAULT_EXCLUDED_TITLE_TERMS = [
+    "senior",
+    "staff",
+    "principal",
+    "lead",
+    "ml",
+    "machine learning",
+    "ai engineer",
+    "artificial intelligence",
+    "data scientist",
+    "data science",
+    "deep learning",
+]
 
 SCORE_PROMPT = """You are evaluating job postings for a candidate. Output ONLY a JSON array, no other text.
 
@@ -67,6 +86,7 @@ For each job output:
 
 Scoring: 80-100 near-perfect; 60-79 good fit; 40-59 partial; <40 poor.
 If included titles are provided, only jobs whose title clearly matches one of them should be worth applying.
+If excluded titles are provided, any job matching them should be worth applying=false.
 Otherwise set score low and worth_applying=false even if the description has some overlap.
 Set worth_applying=true only if score >= {min_score}.
 Include ALL jobs. Output ONLY the JSON array."""
@@ -84,6 +104,7 @@ def _build_candidate_profile(config: dict) -> str:
     seeking = cand.get("seeking", "")
     not_suitable = cand.get("not_suitable", "")
     included_titles = cand.get("included_titles", [])
+    excluded_titles = cand.get("excluded_titles", []) or cand.get("blocked_titles", [])
 
     lines = [f"- {name}"]
     if profile:
@@ -94,7 +115,67 @@ def _build_candidate_profile(config: dict) -> str:
         lines.append(f"- NOT suitable: {not_suitable}")
     if included_titles:
         lines.append("- Included titles: " + ", ".join(included_titles))
+    if excluded_titles:
+        lines.append("- Excluded titles: " + ", ".join(excluded_titles))
     return "\n".join(lines)
+
+
+def _normalize_terms(values) -> list[str]:
+    if not values:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+def _candidate_included_titles(config: dict) -> list[str]:
+    cand = config.get("candidate", {})
+    titles = _normalize_terms(cand.get("included_titles"))
+    if titles:
+        return titles
+    search_titles = _normalize_terms(cand.get("search_titles"))
+    if search_titles:
+        return search_titles
+    return DEFAULT_INCLUDED_TITLE_TERMS
+
+
+def _candidate_excluded_titles(config: dict) -> list[str]:
+    cand = config.get("candidate", {})
+    titles = _normalize_terms(
+        cand.get("excluded_titles")
+        or cand.get("blocked_titles")
+        or cand.get("exclude_titles")
+    )
+    if titles:
+        return titles
+    return DEFAULT_EXCLUDED_TITLE_TERMS
+
+
+def _job_filter_text(job: dict) -> str:
+    return "\n".join(
+        str(job.get(key, ""))
+        for key in ("title", "extracted_title", "company", "location", "snippet", "content", "stack")
+    )
+
+
+def _job_matches_candidate_filters(job: dict, config: dict) -> bool:
+    text = _job_filter_text(job)
+
+    excluded_terms = _candidate_excluded_titles(config)
+    if any(_term_in_text(term, text) for term in excluded_terms):
+        return False
+
+    included_titles = _candidate_included_titles(config)
+    if included_titles and not any(_term_in_text(term, text) for term in included_titles):
+        return False
+
+    return True
+
+
+def _build_search_query(domain: str, config: dict) -> str:
+    titles = _candidate_included_titles(config)
+    quoted_titles = " OR ".join(f'"{title}"' for title in titles)
+    return f"site:{domain} ({quoted_titles})"
 
 
 def is_job_url(url: str) -> bool:
@@ -205,7 +286,18 @@ def _parse_application_count(value) -> int | None:
         return None
     if isinstance(value, int):
         return value
-    match = re.search(r"(\d+)", str(value))
+    text = str(value).strip().lower()
+    upper_bound_match = re.search(
+        r"(be among the first|fewer than|less than|under|no more than)\s+(\d+)\s+applicants?",
+        text,
+    )
+    if upper_bound_match:
+        # LinkedIn often shows "Be among the first 25 applicants" or similar
+        # wording when the true count is below the displayed threshold.
+        upper_bound = int(upper_bound_match.group(2))
+        return max(0, upper_bound - 1)
+
+    match = re.search(r"(\d+)", text)
     return int(match.group(1)) if match else None
 
 
@@ -557,7 +649,7 @@ def _fetch_links(tf: TinyFish, urls: list[str]) -> dict[str, list[str]]:
     return result
 
 
-def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set) -> list[dict]:
+def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set, config: dict) -> list[dict]:
     found_urls: set[str] = set()
 
     logger.debug(f"  [{company['name']}] Fetching careers page: {company['careers_url']}")
@@ -580,7 +672,7 @@ def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set) -> list[dict]
                         ats_jobs += 1
             logger.debug(f"  [{company['name']}] ATS expansion: {ats_jobs} additional job links")
 
-    query = SEARCH_QUERY.format(domain=company["search_domain"])
+    query = _build_search_query(company["search_domain"], config)
     logger.debug(f"  [{company['name']}] Search query: {query}")
     for attempt in range(2):
         try:
@@ -642,11 +734,18 @@ def score_jobs(jobs: list[dict], resume: str, config: dict) -> list[dict]:
     if not jobs:
         return []
 
+    filtered_jobs = [job for job in jobs if _job_matches_candidate_filters(job, config)]
+    skipped_jobs = len(jobs) - len(filtered_jobs)
+    if skipped_jobs:
+        logger.debug("  Filtered out %d job(s) by title rules before scoring", skipped_jobs)
+    if not filtered_jobs:
+        return []
+
     jobs_text = "\n\n".join(
         f"JOB {i + 1}:\nCompany: {j['company']} | Location: {j['location']}\n"
         f"Title: {j['title']}\nURL: {j['url']}\n"
         f"Content:\n{j.get('content', j.get('snippet', ''))[:1500]}"
-        for i, j in enumerate(jobs)
+        for i, j in enumerate(filtered_jobs)
     )
 
     min_score = config.get("candidate", {}).get("min_score", 55)
@@ -688,8 +787,8 @@ def score_jobs(jobs: list[dict], resume: str, config: dict) -> list[dict]:
         if not worth:
             continue
         idx = item.get("job_number", 0) - 1
-        if 0 <= idx < len(jobs):
-            job = jobs[idx].copy()
+        if 0 <= idx < len(filtered_jobs):
+            job = filtered_jobs[idx].copy()
             job.update(
                 {
                     "score": score,
@@ -829,7 +928,7 @@ def run_scan(config: dict, companies: list[dict]) -> None:
     for idx, company in enumerate(companies, 1):
         logger.info(f"[{idx}/{total}] Scanning {company['name']}...")
         try:
-            new_jobs = discover_job_urls(tf, company, seen_urls)
+            new_jobs = discover_job_urls(tf, company, seen_urls, config)
             if not new_jobs:
                 logger.info("  No new job URLs found")
                 companies_scanned += 1

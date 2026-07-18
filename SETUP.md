@@ -242,11 +242,11 @@ Open `config.json` and fill in the `candidate` section. Here's what each field c
   "candidate": {
     "name": "Your Name",                          // appears in drafted cover letters
     "resume_path": "resume/YOUR_RESUME.md",       // path to your resume file
-    "profile": "8 YOE ML Engineer. Python, LLMs, AWS, MLOps.",
+    "profile": "Full-stack / backend engineer with strong API, platform, and product delivery experience.",
     //          ↑ 1–2 sentence summary — the LLM uses this when scoring fit
-    "seeking": "Remote EU or NA roles, open to relocation",
+    "seeking": "Backend, full-stack, platform, and API-heavy roles",
     //          ↑ positive signal — jobs matching this score higher
-    "not_suitable": "Junior roles, pure front-end, no-ML SWE",
+    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles",
     //               ↑ negative filter — jobs matching this score lower
     "min_score": 65,   // jobs below this threshold are not saved or drafted
     "top_n": 5         // how many top matches to include in Telegram notification

@@ -28,10 +28,18 @@ def test_is_ats_listing():
 def test_build_candidate_profile():
     cfg = {"candidate": {"name": "Ada", "profile": "ML eng", "seeking": "remote",
                          "not_suitable": "junior",
-                         "included_titles": ["backend engineer", "php developer"]}}
+                         "included_titles": ["backend engineer", "php developer"],
+                         "excluded_titles": ["senior", "ml"]}}
     out = scanner._build_candidate_profile(cfg)
     assert "- Ada" in out and "Seeking: remote" in out and "NOT suitable: junior" in out
     assert "Included titles: backend engineer, php developer" in out
+    assert "Excluded titles: senior, ml" in out
+
+
+def test_build_search_query_uses_included_titles():
+    cfg = {"candidate": {"included_titles": ["backend engineer", "full stack developer"]}}
+    out = scanner._build_search_query("example.com", cfg)
+    assert out == 'site:example.com ("backend engineer" OR "full stack developer")'
 
 
 def test_format_telegram_message():
@@ -58,16 +66,45 @@ def test_score_jobs_empty():
 
 
 def test_score_jobs_parses_and_filters(monkeypatch):
-    jobs = [{"company": "Acme", "location": "Remote", "title": "MLE", "url": "u1"},
+    jobs = [{"company": "Acme", "location": "Remote", "title": "Backend Engineer", "url": "u1"},
             {"company": "Beta", "location": "NY", "title": "SWE", "url": "u2"}]
     raw = json.dumps([
-        {"job_number": 1, "score": 90, "title": "ML Engineer", "worth_applying": True,
+        {"job_number": 1, "score": 90, "title": "Backend Engineer", "worth_applying": True,
          "stack": "Python", "reason": "great"},
         {"job_number": 2, "score": 20, "title": "Frontend", "worth_applying": False},
     ])
     monkeypatch.setattr(scanner, "chat_with_llm", lambda *a, **k: "noise " + raw + " tail")
     out = scanner.score_jobs(jobs, "resume", {"candidate": {"min_score": 55}})
-    assert len(out) == 1 and out[0]["score"] == 90 and out[0]["extracted_title"] == "ML Engineer"
+    assert len(out) == 1 and out[0]["score"] == 90 and out[0]["extracted_title"] == "Backend Engineer"
+
+
+def test_score_jobs_filters_senior_and_ml_before_llm(monkeypatch):
+    jobs = [
+        {"company": "Acme", "location": "Remote", "title": "Senior Backend Engineer", "url": "u1",
+         "content": "Build APIs"},
+        {"company": "Beta", "location": "Remote", "title": "ML Engineer", "url": "u2",
+         "content": "Train models"},
+        {"company": "Gamma", "location": "Remote", "title": "Backend Engineer", "url": "u3",
+         "content": "Build APIs"},
+    ]
+    seen_prompt = {}
+
+    def fake_llm(*args, **kwargs):
+        seen_prompt["text"] = kwargs["messages"][0]["content"]
+        return json.dumps([
+            {"job_number": 1, "score": 92, "title": "Backend Engineer", "worth_applying": True,
+             "stack": "PHP", "reason": "fit"},
+        ])
+
+    monkeypatch.setattr(scanner, "chat_with_llm", fake_llm)
+    out = scanner.score_jobs(jobs, "resume", {"candidate": {"included_titles": ["backend engineer"],
+                                                            "excluded_titles": ["senior", "ml"]}})
+
+    assert len(out) == 1
+    assert out[0]["url"] == "u3"
+    assert "Senior Backend Engineer" not in seen_prompt["text"]
+    assert "ML Engineer" not in seen_prompt["text"]
+    assert "Backend Engineer" in seen_prompt["text"]
 
 
 def test_score_jobs_no_json(monkeypatch):
@@ -111,7 +148,7 @@ def test_discover_job_urls(monkeypatch):
                   search_urls=["https://x.co/jobs/staff-ai-wxyz"])
     company = {"name": "Acme", "careers_url": "https://x.co/careers",
                "search_domain": "x.co", "location": "Remote", "region": "EU"}
-    out = scanner.discover_job_urls(tf, company, set())
+    out = scanner.discover_job_urls(tf, company, set(), {"candidate": {"included_titles": ["backend engineer"]}})
     urls = {j["url"] for j in out}
     assert "https://x.co/jobs/ml-engineer-abcd" in urls
     assert "https://x.co/jobs/staff-ai-wxyz" in urls
@@ -289,6 +326,12 @@ def test_apify_freshness_and_applicant_limits():
         {"applicationsCount": "10 applicants", "postedDate": "2026-07-10T00:00:00.000Z"},
         cfg,
     )
+
+
+def test_parse_application_count_handles_upper_bound_language():
+    assert scanner._parse_application_count("Be among the first 25 applicants") == 24
+    assert scanner._parse_application_count("Fewer than 10 applicants") == 9
+    assert scanner._parse_application_count("Less than 5 applicants") == 4
 
 
 # --- export --------------------------------------------------------------------

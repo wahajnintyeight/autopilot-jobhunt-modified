@@ -23,9 +23,11 @@ The scoring quality depends on this section — the LLM reads it plus your full 
   "candidate": {
     "name": "Your Name",                        // appears in drafted cover letters
     "resume_path": "resume/YOUR_RESUME.md",     // your resume (Markdown)
-    "profile": "8 YOE ML Engineer. Python, LLMs, AWS, MLOps.",
-    "seeking": "Remote EU or NA roles, open to relocation",   // positive signal — scores higher
-    "not_suitable": "Junior roles, pure front-end, no-ML SWE", // negative filter — scores lower
+    "profile": "Full-stack / backend engineer with strong API, platform, and product delivery experience.",
+    "seeking": "Backend, full-stack, platform, and API-heavy roles",   // positive signal — scores higher
+    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles", // negative filter — scores lower
+    "excluded_titles": ["senior", "staff", "principal", "lead", "ml", "machine learning", "ai engineer", "data scientist"],
+    // ↑ hard filter — these titles are removed before scoring or notification
     "min_score": 65,   // jobs below this are not saved or drafted
     "top_n": 5         // how many top matches go in the Telegram / Discord notification
   }
