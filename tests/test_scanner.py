@@ -29,11 +29,11 @@ def test_build_candidate_profile():
     cfg = {"candidate": {"name": "Ada", "profile": "ML eng", "seeking": "remote",
                          "not_suitable": "junior",
                          "included_titles": ["backend engineer", "php developer"],
-                         "excluded_titles": ["senior", "ml"]}}
+                         "excluded_titles": ["senior", "ml", "java", "kotlin"]}}
     out = scanner._build_candidate_profile(cfg)
     assert "- Ada" in out and "Seeking: remote" in out and "NOT suitable: junior" in out
     assert "Included titles: backend engineer, php developer" in out
-    assert "Excluded titles: senior, ml" in out
+    assert "Excluded titles: senior, ml, java, kotlin" in out
 
 
 def test_build_search_query_uses_included_titles():
@@ -78,13 +78,17 @@ def test_score_jobs_parses_and_filters(monkeypatch):
     assert len(out) == 1 and out[0]["score"] == 90 and out[0]["extracted_title"] == "Backend Engineer"
 
 
-def test_score_jobs_filters_senior_and_ml_before_llm(monkeypatch):
+def test_score_jobs_filters_senior_ml_java_kotlin_before_llm(monkeypatch):
     jobs = [
         {"company": "Acme", "location": "Remote", "title": "Senior Backend Engineer", "url": "u1",
          "content": "Build APIs"},
         {"company": "Beta", "location": "Remote", "title": "ML Engineer", "url": "u2",
          "content": "Train models"},
-        {"company": "Gamma", "location": "Remote", "title": "Backend Engineer", "url": "u3",
+        {"company": "Gamma", "location": "Remote", "title": "Java Engineer", "url": "u3",
+         "content": "Spring APIs"},
+        {"company": "Delta", "location": "Remote", "title": "Kotlin Developer", "url": "u4",
+         "content": "Android"},
+        {"company": "Epsilon", "location": "Remote", "title": "Backend Engineer", "url": "u5",
          "content": "Build APIs"},
     ]
     seen_prompt = {}
@@ -98,12 +102,14 @@ def test_score_jobs_filters_senior_and_ml_before_llm(monkeypatch):
 
     monkeypatch.setattr(scanner, "chat_with_llm", fake_llm)
     out = scanner.score_jobs(jobs, "resume", {"candidate": {"included_titles": ["backend engineer"],
-                                                            "excluded_titles": ["senior", "ml"]}})
+                                                            "excluded_titles": ["senior", "ml", "java", "kotlin"]}})
 
     assert len(out) == 1
-    assert out[0]["url"] == "u3"
+    assert out[0]["url"] == "u5"
     assert "Senior Backend Engineer" not in seen_prompt["text"]
     assert "ML Engineer" not in seen_prompt["text"]
+    assert "Java Engineer" not in seen_prompt["text"]
+    assert "Kotlin Developer" not in seen_prompt["text"]
     assert "Backend Engineer" in seen_prompt["text"]
 
 

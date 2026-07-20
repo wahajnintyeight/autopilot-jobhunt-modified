@@ -12,7 +12,7 @@
     "contractType": ["F", "C"],
     "remote": ["2", "3"],
     "keywords": ["Node.js", "NestJS", "Express", "TypeScript", "JavaScript", "PHP", "Laravel", "React", "Angular"],
-    "excludeKeywords": ["Python", "Go", "Golang", "Django", "Flask"],
+    "excludeKeywords": ["Python", "Go", "Golang", "Django", "Flask", "Java", "Kotlin"],
     "datePosted": "r54000",
     "maxApplicants": 20,
     "maxAgeHours": 15,
@@ -74,7 +74,7 @@
     "resume_path": "resume/YOUR_RESUME.md",
     "profile": "Full-stack / backend engineer with strong API, platform, and product delivery experience. Stack: Node.js, PHP, Laravel, React, TypeScript, cloud.",
     "seeking": "Backend, full-stack, platform, and API-heavy roles",
-    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, non-technical management",
+    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, Java/Kotlin roles, non-technical management",
     "included_titles": [
       "backend engineer",
       "backend developer",
@@ -93,7 +93,9 @@
       "ml",
       "machine learning",
       "ai engineer",
-      "data scientist"
+      "data scientist",
+      "java",
+      "kotlin"
     ],
     "relocation_note": "",
     "min_score": 60,

@@ -57,6 +57,8 @@ DEFAULT_EXCLUDED_TITLE_TERMS = [
     "machine learning",
     "ai engineer",
     "artificial intelligence",
+    "java",
+    "kotlin",
     "data scientist",
     "data science",
     "deep learning",
