@@ -29,11 +29,13 @@ def test_build_candidate_profile():
     cfg = {"candidate": {"name": "Ada", "profile": "ML eng", "seeking": "remote",
                          "not_suitable": "junior",
                          "included_titles": ["backend engineer", "php developer"],
-                         "excluded_titles": ["senior", "ml", "java", "kotlin"]}}
+                         "excluded_titles": ["senior", "ml", "java", "kotlin"],
+                         "excluded_locations": ["Pakistan", "India"]}}
     out = scanner._build_candidate_profile(cfg)
     assert "- Ada" in out and "Seeking: remote" in out and "NOT suitable: junior" in out
     assert "Included titles: backend engineer, php developer" in out
     assert "Excluded titles: senior, ml, java, kotlin" in out
+    assert "Excluded locations: Pakistan, India" in out
 
 
 def test_build_search_query_uses_included_titles():
@@ -78,7 +80,7 @@ def test_score_jobs_parses_and_filters(monkeypatch):
     assert len(out) == 1 and out[0]["score"] == 90 and out[0]["extracted_title"] == "Backend Engineer"
 
 
-def test_score_jobs_filters_senior_ml_java_kotlin_before_llm(monkeypatch):
+def test_score_jobs_filters_senior_ml_java_kotlin_and_locations_before_llm(monkeypatch):
     jobs = [
         {"company": "Acme", "location": "Remote", "title": "Senior Backend Engineer", "url": "u1",
          "content": "Build APIs"},
@@ -88,7 +90,11 @@ def test_score_jobs_filters_senior_ml_java_kotlin_before_llm(monkeypatch):
          "content": "Spring APIs"},
         {"company": "Delta", "location": "Remote", "title": "Kotlin Developer", "url": "u4",
          "content": "Android"},
-        {"company": "Epsilon", "location": "Remote", "title": "Backend Engineer", "url": "u5",
+        {"company": "Epsilon", "location": "Karachi, Pakistan", "title": "Backend Engineer", "url": "u5",
+         "content": "Build APIs"},
+        {"company": "Zeta", "location": "Bengaluru, India", "title": "Backend Engineer", "url": "u6",
+         "content": "Build APIs"},
+        {"company": "Eta", "location": "Remote", "title": "Backend Engineer", "url": "u7",
          "content": "Build APIs"},
     ]
     seen_prompt = {}
@@ -102,14 +108,17 @@ def test_score_jobs_filters_senior_ml_java_kotlin_before_llm(monkeypatch):
 
     monkeypatch.setattr(scanner, "chat_with_llm", fake_llm)
     out = scanner.score_jobs(jobs, "resume", {"candidate": {"included_titles": ["backend engineer"],
-                                                            "excluded_titles": ["senior", "ml", "java", "kotlin"]}})
+                                                            "excluded_titles": ["senior", "ml", "java", "kotlin"],
+                                                            "excluded_locations": ["Pakistan", "India"]}})
 
     assert len(out) == 1
-    assert out[0]["url"] == "u5"
+    assert out[0]["url"] == "u7"
     assert "Senior Backend Engineer" not in seen_prompt["text"]
     assert "ML Engineer" not in seen_prompt["text"]
     assert "Java Engineer" not in seen_prompt["text"]
     assert "Kotlin Developer" not in seen_prompt["text"]
+    assert "Karachi, Pakistan" not in seen_prompt["text"]
+    assert "Bengaluru, India" not in seen_prompt["text"]
     assert "Backend Engineer" in seen_prompt["text"]
 
 

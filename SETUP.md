@@ -246,10 +246,12 @@ Open `config.json` and fill in the `candidate` section. Here's what each field c
     //          ↑ 1–2 sentence summary — the LLM uses this when scoring fit
     "seeking": "Backend, full-stack, platform, and API-heavy roles",
     //          ↑ positive signal — jobs matching this score higher
-    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, Java/Kotlin roles",
+    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, Java/Kotlin roles, Pakistan/South Asia roles",
     //               ↑ negative filter — jobs matching this score lower
     "excluded_titles": ["senior", "staff", "principal", "lead", "ml", "machine learning", "ai engineer", "data scientist", "java", "kotlin"],
     //               ↑ hard filter — these titles are removed before scoring or notification
+    "excluded_locations": ["Pakistan", "South Asia", "Afghanistan", "Bangladesh", "Bhutan", "India", "Maldives", "Nepal", "Sri Lanka"],
+    //               ↑ hard filter — these locations are removed before scoring or notification
     "min_score": 65,   // jobs below this threshold are not saved or drafted
     "top_n": 5         // how many top matches to include in Telegram notification
   }

@@ -64,6 +64,18 @@ DEFAULT_EXCLUDED_TITLE_TERMS = [
     "deep learning",
 ]
 
+DEFAULT_EXCLUDED_LOCATION_TERMS = [
+    "pakistan",
+    "south asia",
+    "afghanistan",
+    "bangladesh",
+    "bhutan",
+    "india",
+    "maldives",
+    "nepal",
+    "sri lanka",
+]
+
 SCORE_PROMPT = """You are evaluating job postings for a candidate. Output ONLY a JSON array, no other text.
 
 CANDIDATE:
@@ -89,6 +101,7 @@ For each job output:
 Scoring: 80-100 near-perfect; 60-79 good fit; 40-59 partial; <40 poor.
 If included titles are provided, only jobs whose title clearly matches one of them should be worth applying.
 If excluded titles are provided, any job matching them should be worth applying=false.
+If excluded locations are provided, any job whose location mentions one of them should be worth applying=false.
 Otherwise set score low and worth_applying=false even if the description has some overlap.
 Set worth_applying=true only if score >= {min_score}.
 Include ALL jobs. Output ONLY the JSON array."""
@@ -107,6 +120,7 @@ def _build_candidate_profile(config: dict) -> str:
     not_suitable = cand.get("not_suitable", "")
     included_titles = cand.get("included_titles", [])
     excluded_titles = cand.get("excluded_titles", []) or cand.get("blocked_titles", [])
+    excluded_locations = cand.get("excluded_locations", []) or cand.get("blocked_locations", [])
 
     lines = [f"- {name}"]
     if profile:
@@ -119,6 +133,8 @@ def _build_candidate_profile(config: dict) -> str:
         lines.append("- Included titles: " + ", ".join(included_titles))
     if excluded_titles:
         lines.append("- Excluded titles: " + ", ".join(excluded_titles))
+    if excluded_locations:
+        lines.append("- Excluded locations: " + ", ".join(excluded_locations))
     return "\n".join(lines)
 
 
@@ -153,6 +169,18 @@ def _candidate_excluded_titles(config: dict) -> list[str]:
     return DEFAULT_EXCLUDED_TITLE_TERMS
 
 
+def _candidate_excluded_locations(config: dict) -> list[str]:
+    cand = config.get("candidate", {})
+    locations = _normalize_terms(
+        cand.get("excluded_locations")
+        or cand.get("blocked_locations")
+        or cand.get("exclude_locations")
+    )
+    if locations:
+        return locations
+    return DEFAULT_EXCLUDED_LOCATION_TERMS
+
+
 def _job_filter_text(job: dict) -> str:
     return "\n".join(
         str(job.get(key, ""))
@@ -165,6 +193,10 @@ def _job_matches_candidate_filters(job: dict, config: dict) -> bool:
 
     excluded_terms = _candidate_excluded_titles(config)
     if any(_term_in_text(term, text) for term in excluded_terms):
+        return False
+
+    excluded_locations = _candidate_excluded_locations(config)
+    if any(_term_in_text(term, text) for term in excluded_locations):
         return False
 
     included_titles = _candidate_included_titles(config)

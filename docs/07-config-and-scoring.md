@@ -25,9 +25,10 @@ The scoring quality depends on this section — the LLM reads it plus your full 
     "resume_path": "resume/YOUR_RESUME.md",     // your resume (Markdown)
     "profile": "Full-stack / backend engineer with strong API, platform, and product delivery experience.",
     "seeking": "Backend, full-stack, platform, and API-heavy roles",   // positive signal — scores higher
-    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, Java/Kotlin roles", // negative filter — scores lower
+    "not_suitable": "Junior roles, senior/staff/principal/lead roles, ML/AI/data science roles, Java/Kotlin roles, Pakistan/South Asia roles", // negative filter — scores lower
     "excluded_titles": ["senior", "staff", "principal", "lead", "ml", "machine learning", "ai engineer", "data scientist", "java", "kotlin"],
-    // ↑ hard filter — these titles are removed before scoring or notification
+    "excluded_locations": ["Pakistan", "South Asia", "Afghanistan", "Bangladesh", "Bhutan", "India", "Maldives", "Nepal", "Sri Lanka"],
+    // ↑ hard filters — these titles and locations are removed before scoring or notification
     "min_score": 65,   // jobs below this are not saved or drafted
     "top_n": 5         // how many top matches go in the Telegram / Discord notification
   }
