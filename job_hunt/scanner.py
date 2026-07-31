@@ -212,6 +212,29 @@ def _build_search_query(domain: str, config: dict) -> str:
     return f"site:{domain} ({quoted_titles})"
 
 
+def _company_careers_urls(company: dict) -> list[str]:
+    urls: list[str] = []
+
+    primary = company.get("careers_url")
+    if isinstance(primary, str) and primary.strip():
+        urls.append(primary.strip())
+
+    extra = company.get("careers_urls") or []
+    if isinstance(extra, str):
+        extra = [extra]
+    for url in extra:
+        if isinstance(url, str) and url.strip():
+            urls.append(url.strip())
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            deduped.append(url)
+    return deduped
+
+
 def is_job_url(url: str) -> bool:
     return bool(JOB_URL_RE.search(url)) or bool(ATS_JOB_RE.search(url))
 
@@ -686,25 +709,26 @@ def _fetch_links(tf: TinyFish, urls: list[str]) -> dict[str, list[str]]:
 def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set, config: dict) -> list[dict]:
     found_urls: set[str] = set()
 
-    logger.debug(f"  [{company['name']}] Fetching careers page: {company['careers_url']}")
-    resp = _fetch_with_ratelimit(tf, [company["careers_url"]], format="markdown", links=True)
-    if resp and resp.results:
-        links = resp.results[0].links
-        direct = [link for link in links if is_job_url(link) and link not in seen_urls]
-        ats_pages = list({link for link in links if is_ats_listing(link)})
-        found_urls.update(direct)
-        logger.debug(f"  [{company['name']}] Careers page: {len(direct)} direct job links, {len(ats_pages)} ATS listing pages")
+    for careers_url in _company_careers_urls(company):
+        logger.debug(f"  [{company['name']}] Fetching careers page: {careers_url}")
+        resp = _fetch_with_ratelimit(tf, [careers_url], format="markdown", links=True)
+        if resp and resp.results:
+            links = resp.results[0].links
+            direct = [link for link in links if is_job_url(link) and link not in seen_urls]
+            ats_pages = list({link for link in links if is_ats_listing(link)})
+            found_urls.update(direct)
+            logger.debug(f"  [{company['name']}] Careers page: {len(direct)} direct job links, {len(ats_pages)} ATS listing pages")
 
-        if ats_pages:
-            logger.debug(f"  [{company['name']}] Expanding {len(ats_pages)} ATS listing page(s)...")
-            ats_link_map = _fetch_links(tf, ats_pages[:5])
-            ats_jobs = 0
-            for page_links in ats_link_map.values():
-                for link in page_links:
-                    if is_job_url(link) and link not in seen_urls:
-                        found_urls.add(link)
-                        ats_jobs += 1
-            logger.debug(f"  [{company['name']}] ATS expansion: {ats_jobs} additional job links")
+            if ats_pages:
+                logger.debug(f"  [{company['name']}] Expanding {len(ats_pages)} ATS listing page(s)...")
+                ats_link_map = _fetch_links(tf, ats_pages[:5])
+                ats_jobs = 0
+                for page_links in ats_link_map.values():
+                    for link in page_links:
+                        if is_job_url(link) and link not in seen_urls:
+                            found_urls.add(link)
+                            ats_jobs += 1
+                logger.debug(f"  [{company['name']}] ATS expansion: {ats_jobs} additional job links")
 
     query = _build_search_query(company["search_domain"], config)
     logger.debug(f"  [{company['name']}] Search query: {query}")

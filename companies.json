@@ -30,6 +30,7 @@
 
   { "name": "DeepMind", "careers_url": "https://deepmind.google/careers/", "search_domain": "deepmind.google", "location": "London, UK", "region": "EU" },
   { "name": "Wayve", "careers_url": "https://wayve.ai/careers/", "search_domain": "wayve.ai", "location": "London, UK", "region": "EU" },
+  { "name": "PhysicsX", "careers_url": "https://job-boards.eu.greenhouse.io/physicsx", "careers_urls": ["https://www.physicsx.ai/careers"], "search_domain": "physicsx.ai", "location": "London, UK / New York, US / Singapore", "region": "EU" },
   { "name": "Graphcore", "careers_url": "https://www.graphcore.ai/careers", "search_domain": "graphcore.ai", "location": "Bristol, UK", "region": "EU" },
   { "name": "DeepL", "careers_url": "https://www.deepl.com/en/careers", "search_domain": "deepl.com", "location": "Cologne, Germany", "region": "EU" },
   { "name": "Dataiku", "careers_url": "https://www.dataiku.com/company/careers/", "search_domain": "dataiku.com", "location": "Paris, France / Remote", "region": "EU" },

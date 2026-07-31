@@ -9,6 +9,7 @@ The list of companies to scan ships pre-loaded with 130+ entries and is **commit
 {
   "name": "Mistral AI",
   "careers_url": "https://jobs.lever.co/mistral",
+  "careers_urls": ["https://mistral.ai/careers/"],
   "search_domain": "mistral.ai",
   "location": "Paris / Remote",
   "region": "EU"
@@ -19,6 +20,7 @@ The list of companies to scan ships pre-loaded with 130+ entries and is **commit
 |---|---|
 | `name` | display + grouping in results |
 | `careers_url` | the page fetched for direct + ATS job links |
+| `careers_urls` | optional extra careers pages to fetch for the same company |
 | `search_domain` | the `site:` search query for extra postings |
 | `location` / `region` | carried onto each job (region tags: EU / US / APAC / Remote / NZ) |
 

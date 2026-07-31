@@ -44,6 +44,17 @@ def test_build_search_query_uses_included_titles():
     assert out == 'site:example.com ("backend engineer" OR "full stack developer")'
 
 
+def test_company_careers_urls_combines_primary_and_extra():
+    company = {
+        "careers_url": "https://example.com/careers",
+        "careers_urls": ["https://example.com/jobs", "https://example.com/careers", " "],
+    }
+    assert scanner._company_careers_urls(company) == [
+        "https://example.com/careers",
+        "https://example.com/jobs",
+    ]
+
+
 def test_format_telegram_message():
     jobs = [{"company": "Acme", "title": "T", "extracted_title": "ML Eng", "location": "NY",
              "location_remote": "Remote", "stack": "Python", "reason": "fits", "url": "u"}]
@@ -168,6 +179,36 @@ def test_discover_job_urls(monkeypatch):
     assert "https://x.co/jobs/ml-engineer-abcd" in urls
     assert "https://x.co/jobs/staff-ai-wxyz" in urls
     assert all(j["company"] == "Acme" for j in out)
+
+
+def test_discover_job_urls_checks_multiple_careers_pages(monkeypatch):
+    def get_contents(urls, **kwargs):
+        links_by_url = {
+            "https://x.co/careers": ["https://x.co/jobs/from-careers"],
+            "https://x.co/jobs": ["https://x.co/jobs/from-board"],
+        }
+        results = []
+        for u in urls:
+            results.append(types.SimpleNamespace(
+                url=u, links=links_by_url.get(u, []), text="JD text", title="Fetched Title"))
+        return types.SimpleNamespace(results=results, errors=[])
+
+    tf = types.SimpleNamespace(
+        fetch=types.SimpleNamespace(get_contents=get_contents),
+        search=types.SimpleNamespace(query=lambda *a, **k: types.SimpleNamespace(results=[])),
+    )
+    company = {
+        "name": "Acme",
+        "careers_url": "https://x.co/jobs",
+        "careers_urls": ["https://x.co/careers"],
+        "search_domain": "x.co",
+        "location": "Remote",
+        "region": "EU",
+    }
+    out = scanner.discover_job_urls(tf, company, set(), {"candidate": {"included_titles": ["backend engineer"]}})
+    urls = {j["url"] for j in out}
+    assert "https://x.co/jobs/from-board" in urls
+    assert "https://x.co/jobs/from-careers" in urls
 
 
 def test_fetch_job_details(monkeypatch):

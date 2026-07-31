@@ -210,6 +210,16 @@
     "region": "EU"
   },
   {
+    "name": "PhysicsX",
+    "careers_url": "https://job-boards.eu.greenhouse.io/physicsx",
+    "careers_urls": [
+      "https://www.physicsx.ai/careers"
+    ],
+    "search_domain": "physicsx.ai",
+    "location": "London, UK / New York, US / Singapore",
+    "region": "EU"
+  },
+  {
     "name": "Graphcore",
     "careers_url": "https://www.graphcore.ai/careers",
     "search_domain": "graphcore.ai",
