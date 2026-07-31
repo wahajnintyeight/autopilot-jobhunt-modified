@@ -220,6 +220,142 @@
     "region": "EU"
   },
   {
+    "name": "Ebury",
+    "careers_url": "https://ebury.com/company/careers/job-board",
+    "careers_urls": [
+      "https://ebury.com/company/careers"
+    ],
+    "search_domain": "ebury.com",
+    "location": "London, UK / Madrid, Spain / Global",
+    "region": "EU"
+  },
+  {
+    "name": "Isomorphic Labs",
+    "careers_url": "https://job-boards.greenhouse.io/isomorphiclabs?gh_src=ceb3602b4us",
+    "careers_urls": [
+      "https://www.isomorphiclabs.com/careers",
+      "https://www.isomorphiclabs.com/work-with-us"
+    ],
+    "search_domain": "isomorphiclabs.com",
+    "location": "London, UK / Lausanne, Switzerland / Cambridge, MA",
+    "region": "EU"
+  },
+  {
+    "name": "CamGraPhIC",
+    "careers_url": "https://www.camgraphic-technology.com/jobs/",
+    "search_domain": "camgraphic-technology.com",
+    "location": "Pisa, Italy / Cambridge, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Paymentology",
+    "careers_url": "https://www.paymentology.com/en/about-us/careers",
+    "search_domain": "paymentology.com",
+    "location": "Global / Remote",
+    "region": "Remote"
+  },
+  {
+    "name": "Quantum Motion",
+    "careers_url": "https://quantummotion.com/careers/",
+    "search_domain": "quantummotion.com",
+    "location": "Oxford, UK / London, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Elliptic",
+    "careers_url": "https://www.elliptic.co/company/life-at-elliptic",
+    "search_domain": "elliptic.co",
+    "location": "London, UK / New York, US / Singapore",
+    "region": "EU"
+  },
+  {
+    "name": "MillTech",
+    "careers_url": "https://milltech.com/company/careers",
+    "search_domain": "milltech.com",
+    "location": "London, UK / Global",
+    "region": "EU"
+  },
+  {
+    "name": "Conduct",
+    "careers_url": "https://conduct.ai/about",
+    "search_domain": "conduct.ai",
+    "location": "London, UK / New York, US",
+    "region": "EU"
+  },
+  {
+    "name": "Nyobolt",
+    "careers_url": "https://nyobolt.com/careers/",
+    "search_domain": "nyobolt.com",
+    "location": "Cambridge, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Fresha",
+    "careers_url": "https://www.fresha.com/careers",
+    "search_domain": "fresha.com",
+    "location": "London, UK / Global",
+    "region": "EU"
+  },
+  {
+    "name": "Wordsmith",
+    "careers_url": "https://www.wordsmith.ai/careers",
+    "search_domain": "wordsmith.ai",
+    "location": "Edinburgh, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Raspberry Pi",
+    "careers_url": "https://www.raspberrypi.com/jobs/",
+    "careers_urls": [
+      "https://www.raspberrypi.org/careers"
+    ],
+    "search_domain": "raspberrypi.com",
+    "location": "Cambridge, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Cloudsmith",
+    "careers_url": "https://careers.cloudsmith.com/",
+    "search_domain": "cloudsmith.com",
+    "location": "Belfast, UK / Remote",
+    "region": "EU"
+  },
+  {
+    "name": "Multiverse",
+    "careers_url": "https://www.multiverse.io/en-US/careers",
+    "search_domain": "multiverse.io",
+    "location": "London, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Primer",
+    "careers_url": "https://primer.io/careers",
+    "search_domain": "primer.io",
+    "location": "London, UK / Remote",
+    "region": "EU"
+  },
+  {
+    "name": "CameraMatics",
+    "careers_url": "https://www.cameramatics.com/company/careers/",
+    "search_domain": "cameramatics.com",
+    "location": "Waterford, Ireland / Darlington, UK",
+    "region": "EU"
+  },
+  {
+    "name": "IQE",
+    "careers_url": "https://careers.iqep.com/jobs/search",
+    "search_domain": "careers.iqep.com",
+    "location": "Cardiff, UK",
+    "region": "EU"
+  },
+  {
+    "name": "Fractile",
+    "careers_url": "https://www.fractile.ai/jobs",
+    "search_domain": "fractile.ai",
+    "location": "Bristol, UK",
+    "region": "EU"
+  },
+  {
     "name": "Graphcore",
     "careers_url": "https://www.graphcore.ai/careers",
     "search_domain": "graphcore.ai",
