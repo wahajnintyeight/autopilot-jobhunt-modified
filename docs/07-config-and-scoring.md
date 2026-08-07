@@ -54,6 +54,11 @@ prompt):
 | 40–59 | partial fit |
 | < 40 | poor fit |
 
+Language handling is explicit: English must be the role's working language. German,
+French, and other languages are allowed as optional or nice-to-have skills, but a role
+is rejected when the posting explicitly requires a non-English language. Location alone
+never implies a language requirement.
+
 - **`min_score`** — the save/draft threshold. 60–70 is a good starting range. Jobs below
   it are discarded from results.
 - **`top_n`** — how many of the passing matches are pushed to Telegram / Discord (all passing jobs

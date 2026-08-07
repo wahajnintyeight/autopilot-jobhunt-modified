@@ -64,11 +64,12 @@ def draft_application(config: dict, job_ref: str) -> None:
     logger.info("Tailoring resume...")
     resume_md = chat_with_llm(
         config,
-        messages=[{"role": "user", "content": f"""Rewrite the resume below to mirror the language and emphasized skills in this job description.
+        messages=[{"role": "user", "content": f"""Rewrite the resume below in English to mirror the language and emphasized skills in this job description.
 
 Rules:
 - Keep every fact truthful — do NOT invent experience
 - Mirror JD terminology where the candidate genuinely has that experience
+- Keep the output in English; do not require or add German, French, or other language skills unless they are explicitly supported by the original resume
 - Reorder projects/bullets to surface most relevant experience first
 - Keep the same section structure
 - Output full resume in Markdown
@@ -90,7 +91,7 @@ Output ONLY the tailored resume in Markdown. No preamble."""}],
     relocation_line = f"- {relocation_note}" if relocation_note else ""
     cover_md = chat_with_llm(
         config,
-        messages=[{"role": "user", "content": f"""Write a one-page cover letter for {candidate_name} applying to this role.
+        messages=[{"role": "user", "content": f"""Write a one-page cover letter in English for {candidate_name} applying to this role.
 
 Rules:
 - Open with one specific reason this role fits {candidate_name} (reference something concrete in the JD)
@@ -98,6 +99,7 @@ Rules:
 - Paragraph 2: why this company specifically (not generic)
 - Close: clear ask for an interview
 - Tone: direct and confident, not obsequious
+- Write entirely in English. Treat German, French, and other additional languages as optional unless the candidate's resume explicitly supports them.
 {relocation_line}
 - Do NOT use: "I am excited to apply", "I am a team player", "I am passionate about"
 
@@ -117,7 +119,7 @@ Output ONLY the cover letter. No preamble."""}],
     logger.info("Extracting application info...")
     info_txt = chat_with_llm(
         config,
-        messages=[{"role": "user", "content": f"""Extract from this job posting (plain text output, clear labels):
+        messages=[{"role": "user", "content": f"""Extract from this job posting in English (plain text output, clear labels):
 
 1. Application URL or email
 2. Hiring manager / recruiter name (if mentioned)
@@ -125,6 +127,8 @@ Output ONLY the cover letter. No preamble."""}],
 4. Application deadline (if mentioned)
 5. Key requirements (bullet list, max 8 items)
 6. Nice-to-have skills (bullet list, max 5 items)
+
+Do not make German, French, or any other additional language a requirement unless the job posting explicitly marks it as required.
 
 JOB DESCRIPTION:
 {jd_truncated}"""}],

@@ -94,11 +94,20 @@ For each job output:
   "title": "extracted job title",
   "stack": "key tech from JD (comma-separated, max 6 items)",
   "location_remote": "location + remote policy",
+  "english_working_language": true/false,
+  "other_language_required": true/false,
   "reason": "one sentence why this fits or doesn't fit the candidate",
   "worth_applying": true/false
 }}
 
 Scoring: 80-100 near-perfect; 60-79 good fit; 40-59 partial; <40 poor.
+Language policy:
+- English must be the working language of the role and the job posting must be usable in English.
+- German, French, or any other additional language is optional unless the JD explicitly says it is required, mandatory, or essential.
+- Do not infer a language requirement from the country, city, or office location.
+- Set english_working_language=false if the role is conducted in a non-English language or the posting explicitly requires a non-English working language.
+- Set other_language_required=true only when a non-English language is explicitly required. Optional or nice-to-have language skills must be false.
+- A job is not worth applying to unless english_working_language=true and other_language_required=false.
 If included titles are provided, only jobs whose title clearly matches one of them should be worth applying.
 If excluded titles are provided, any job matching them should be worth applying=false.
 If excluded locations are provided, any job whose location mentions one of them should be worth applying=false.
@@ -841,6 +850,11 @@ def score_jobs(jobs: list[dict], resume: str, config: dict) -> list[dict]:
         title = item.get("title", "?")
         reason = item.get("reason", "")
         worth = item.get("worth_applying", False)
+        english_working_language = item.get("english_working_language", False)
+        other_language_required = item.get("other_language_required", False)
+        if english_working_language is not True or other_language_required is True:
+            worth = False
+            logger.debug("    Skipping %s - English working language policy not met", title)
         logger.debug(f"    [{score:3d}] {title} — {reason[:80]}")
         if not worth:
             continue
@@ -853,6 +867,8 @@ def score_jobs(jobs: list[dict], resume: str, config: dict) -> list[dict]:
                     "extracted_title": title,
                     "stack": item.get("stack", ""),
                     "location_remote": item.get("location_remote", job["location"]),
+                    "english_working_language": english_working_language,
+                    "other_language_required": other_language_required,
                     "reason": reason,
                 }
             )

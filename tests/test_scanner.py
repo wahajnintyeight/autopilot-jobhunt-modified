@@ -82,13 +82,40 @@ def test_score_jobs_parses_and_filters(monkeypatch):
     jobs = [{"company": "Acme", "location": "Remote", "title": "Backend Engineer", "url": "u1"},
             {"company": "Beta", "location": "NY", "title": "SWE", "url": "u2"}]
     raw = json.dumps([
-        {"job_number": 1, "score": 90, "title": "Backend Engineer", "worth_applying": True,
+        {"job_number": 1, "score": 90, "title": "Backend Engineer", "english_working_language": True,
+         "other_language_required": False, "worth_applying": True,
          "stack": "Python", "reason": "great"},
         {"job_number": 2, "score": 20, "title": "Frontend", "worth_applying": False},
     ])
     monkeypatch.setattr(scanner, "chat_with_llm", lambda *a, **k: "noise " + raw + " tail")
     out = scanner.score_jobs(jobs, "resume", {"candidate": {"min_score": 55}})
     assert len(out) == 1 and out[0]["score"] == 90 and out[0]["extracted_title"] == "Backend Engineer"
+
+
+def test_score_jobs_rejects_non_english_or_required_additional_language(monkeypatch):
+    jobs = [
+        {"company": "German Co", "location": "Berlin", "title": "Backend Engineer", "url": "u1",
+         "content": "German is required for this role."},
+        {"company": "French Co", "location": "Paris", "title": "Backend Engineer", "url": "u2",
+         "content": "The team works in French."},
+        {"company": "English Co", "location": "Remote", "title": "Backend Engineer", "url": "u3",
+         "content": "English is the working language. German is nice to have."},
+    ]
+    monkeypatch.setattr(scanner, "chat_with_llm", lambda *a, **k: json.dumps([
+        {"job_number": 1, "score": 90, "title": "Backend Engineer",
+         "english_working_language": True, "other_language_required": True,
+         "worth_applying": True, "reason": "fit"},
+        {"job_number": 2, "score": 90, "title": "Backend Engineer",
+         "english_working_language": False, "other_language_required": True,
+         "worth_applying": True, "reason": "fit"},
+        {"job_number": 3, "score": 90, "title": "Backend Engineer",
+         "english_working_language": True, "other_language_required": False,
+         "worth_applying": True, "reason": "fit"},
+    ]))
+
+    out = scanner.score_jobs(jobs, "resume", {"candidate": {"included_titles": ["backend engineer"]}})
+
+    assert [job["url"] for job in out] == ["u3"]
 
 
 def test_score_jobs_filters_senior_ml_java_kotlin_and_locations_before_llm(monkeypatch):
@@ -113,7 +140,8 @@ def test_score_jobs_filters_senior_ml_java_kotlin_and_locations_before_llm(monke
     def fake_llm(*args, **kwargs):
         seen_prompt["text"] = kwargs["messages"][0]["content"]
         return json.dumps([
-            {"job_number": 1, "score": 92, "title": "Backend Engineer", "worth_applying": True,
+            {"job_number": 1, "score": 92, "title": "Backend Engineer", "english_working_language": True,
+             "other_language_required": False, "worth_applying": True,
              "stack": "PHP", "reason": "fit"},
         ])
 
