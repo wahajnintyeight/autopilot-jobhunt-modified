@@ -125,11 +125,38 @@ function SearchConfigPanel({ search }) {
   );
 }
 
+function WorkspaceHeader({ view, summary, analytics, latestRun }) {
+  if (view === "new") {
+    const latestDetail = latestRun
+      ? `${latestRun.label} completed ${relativeTime(latestRun.timestamp)} · ${latestRun.jobs} jobs found`
+      : "Waiting for a completed scan result";
+    return <div className="workspace-header"><div><p className="eyebrow">INBOX / FRESH SIGNAL</p><h2>New jobs, ready for a decision.</h2><p>Roles from the latest completed pass are kept here until the next scan replaces the inbox.</p></div><div className="workspace-header__facts"><span><strong>{summary.new_jobs ?? 0}</strong>fresh roles</span><span>{latestDetail}</span></div></div>;
+  }
+  return <div className="workspace-header"><div><p className="eyebrow">ARCHIVE / SEARCH MEMORY</p><h2>History with the signal intact.</h2><p>Search every saved role, compare sources, and use the score trail to decide where your attention goes next.</p></div><div className="workspace-header__facts"><span><strong>{analytics?.total ?? summary.history_jobs ?? 0}</strong>saved roles</span><span><strong>{analytics?.high_score ?? 0}</strong> high-confidence matches</span></div></div>;
+}
+
+function HistoryInsights({ analytics }) {
+  const total = analytics?.total || 0;
+  const sources = analytics?.sources || {};
+  return <div className="history-insights">
+    <article className="insight-card insight-card--score"><span className="card-kicker">MATCH QUALITY</span><div className="insight-card__value">{analytics?.average_score ?? "—"}<small>/100 avg</small></div><div className="insight-card__footer"><span>{analytics?.target_score ?? 0} at 60+</span><span>{analytics?.scored ?? 0} scored</span></div></article>
+    <article className="insight-card"><div className="insight-card__head"><span className="card-kicker">SOURCE MIX</span><span>{total.toLocaleString()} total</span></div><div className="source-meter" aria-label="History source mix"><span className="source-meter__linkedin" style={{ width: `${total ? ((sources.linkedin || 0) / total) * 100 : 0}%` }} /><span className="source-meter__careers" style={{ width: `${total ? ((sources.careers || 0) / total) * 100 : 0}%` }} /></div><div className="insight-card__legend"><span><i className="legend-dot legend-dot--linkedin" />LinkedIn <strong>{sources.linkedin || 0}</strong></span><span><i className="legend-dot legend-dot--careers" />Careers <strong>{sources.careers || 0}</strong></span></div></article>
+    <article className="insight-card"><span className="card-kicker">SCORE BANDS</span><div className="score-bars">{(analytics?.score_buckets || []).map((bucket) => <div className="score-bar" key={bucket.label}><div><span>{bucket.label}</span><strong>{bucket.count}</strong></div><span className="score-bar__track"><i style={{ width: `${total ? (bucket.count / total) * 100 : 0}%` }} /></span></div>)}</div></article>
+    <article className="insight-card insight-card--ranked"><span className="card-kicker">MOST REPRESENTED COMPANIES</span><div className="ranked-list">{(analytics?.top_companies || []).slice(0, 5).map((item, index) => <div className="ranked-row" key={item.label}><span>0{index + 1}</span><strong>{item.label}</strong><em>{item.count}</em></div>)}{!(analytics?.top_companies || []).length && <span className="tag-empty">No company history yet</span>}</div></article>
+  </div>;
+}
+
+function RunTimeline({ runs }) {
+  return <article className="run-timeline"><div className="insight-section-head"><div><span className="card-kicker">RUN HISTORY</span><h3>What the worker has completed</h3></div><span className="insight-section-head__meta">Last {Math.min(runs?.length || 0, 16)} runs</span></div><div className="run-list">{(runs || []).map((run, index) => <div className="run-row" key={`${run.timestamp}-${run.source}-${index}`}><span className={`run-marker run-marker--${run.source}`} /><div className="run-row__main"><strong>{run.label}</strong><span>{formatDate(run.timestamp)} · {relativeTime(run.timestamp)}</span></div><div className="run-row__result"><strong>{run.jobs} jobs</strong><span>{run.top_matches} top matches{run.companies !== null ? ` · ${run.companies}/${run.total_companies} sites` : ""}</span></div></div>)}{!(runs || []).length && <p className="muted-copy">No completed runs have been recorded yet.</p>}</div></article>;
+}
+
 function App() {
   const [dashboard, setDashboard] = useState(null);
   const [view, setView] = useState("overview");
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("all");
+  const [sortBy, setSortBy] = useState("score");
+  const [visibleCount, setVisibleCount] = useState(18);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -177,6 +204,10 @@ function App() {
     if (selectedJob && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
   }, [selectedJob]);
 
+  useEffect(() => {
+    setVisibleCount(18);
+  }, [view, query, source, sortBy]);
+
   const summary = dashboard?.summary || {};
   const jobs = view === "new" ? (dashboard?.new_jobs || []) : (dashboard?.history || []);
   const filteredJobs = useMemo(() => jobs.filter((job) => {
@@ -186,11 +217,21 @@ function App() {
     return matchesQuery && (source === "all" || (source === "linkedin" ? isLinkedIn : !isLinkedIn));
   }), [jobs, query, source]);
 
+  const sortedJobs = useMemo(() => [...filteredJobs].sort((left, right) => {
+    if (sortBy === "company") return left.company.localeCompare(right.company);
+    if (sortBy === "recent") return String(right.scan_date).localeCompare(String(left.scan_date));
+    return (right.score ?? -1) - (left.score ?? -1);
+  }), [filteredJobs, sortBy]);
+  const visibleJobs = sortedJobs.slice(0, visibleCount);
+
   const latestApify = dashboard?.latest?.apify;
   const latestCareers = dashboard?.latest?.careers;
   const scan = dashboard?.scan || {};
   const profile = dashboard?.profile || {};
   const search = dashboard?.search || {};
+  const analytics = dashboard?.analytics || {};
+  const runs = dashboard?.runs || [];
+  const latestRun = runs[0];
   const serviceActive = dashboard?.service?.state === "active";
   const statusLabel = serviceActive ? (scan.active ? "Processing a scan" : "Standing by") : "Unavailable";
 
@@ -247,16 +288,21 @@ function App() {
         <section className="search-config-section" aria-label="Search configuration"><SearchConfigPanel search={search} /></section>
 
         <section className="content-section">
-          <div className="section-head"><div><p className="eyebrow">{view === "overview" ? "RECENT SIGNAL" : view === "new" ? "INBOX" : "ARCHIVE"}</p><h2>{view === "overview" ? "What needs attention" : view === "new" ? "New jobs" : "Job history"}</h2></div><div className="section-head__meta">{view === "overview" ? ((dashboard?.history || []).length ? "Latest saved roles" : "No saved roles yet") : `${filteredJobs.length} shown / ${jobs.length} total`}</div></div>
-          {view !== "overview" && <div className="list-tools"><label className="search-field"><Icon name="search" size={17} /><span className="sr-only">Search jobs</span><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, company, location" /></label><div className="filter-tabs" role="group" aria-label="Filter by source">{["all", "linkedin", "careers"].map((item) => <button className={source === item ? "is-selected" : ""} onClick={() => setSource(item)} key={item} type="button">{item === "all" ? "All" : item === "linkedin" ? "LinkedIn" : "Careers"}</button>)}</div></div>}
-          {view === "overview" ? <div className="overview-grid"><div className="job-list">{(dashboard?.history || []).slice(0, 6).map((job) => <JobRow key={`${job.url}-${job.scan_date}`} job={job} onOpen={setSelectedJob} />)}{!(dashboard?.history || []).length && <EmptyState label="History is empty" detail="Completed scans will appear here once roles are saved." action="Refresh data" onAction={() => loadDashboard(true)} />}</div><aside className="activity-card"><div className="activity-card__head"><span className="eyebrow">EVENT STREAM</span><span className="live-label"><span className="pulse-dot pulse-dot--live" />live</span></div><div className="event-list">{(dashboard?.events || []).slice(0, 7).map((event, index) => <div className="event" key={`${event.timestamp}-${index}`}><span className={`event-marker event-marker--${event.level.toLowerCase()}`} /><div><strong>{event.message}</strong><span>{formatDate(event.timestamp)}</span></div></div>)}{!(dashboard?.events || []).length && <p className="muted-copy">No log events available yet.</p>}</div></aside></div> : <div className="job-list">{filteredJobs.map((job) => <JobRow key={`${job.url}-${job.scan_date}-${job.title}`} job={job} onOpen={setSelectedJob} />)}{!filteredJobs.length && <EmptyState label={view === "new" ? "No new jobs" : "No matching records"} detail={view === "new" ? "The latest completed scan has no jobs to review." : "Try a different search or source filter."} action="Clear filters" onAction={() => { setQuery(""); setSource("all"); }} />}</div>}
+          {view === "overview" ? <div className="section-head"><div><p className="eyebrow">RECENT SIGNAL</p><h2>What needs attention</h2></div><div className="section-head__meta">{(dashboard?.history || []).length ? "Latest saved roles" : "No saved roles yet"}</div></div> : <WorkspaceHeader view={view} summary={summary} analytics={analytics} latestRun={latestRun} />}
+          {view === "history" && <><HistoryInsights analytics={analytics} /><RunTimeline runs={runs} /></>}
+          {view !== "overview" && <div className="list-tools"><label className="search-field"><Icon name="search" size={17} /><span className="sr-only">Search jobs</span><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, company, location, keywords" /></label><div className="list-tools__controls"><div className="filter-tabs" role="group" aria-label="Filter by source">{["all", "linkedin", "careers"].map((item) => <button className={source === item ? "is-selected" : ""} onClick={() => setSource(item)} key={item} type="button">{item === "all" ? "All" : item === "linkedin" ? "LinkedIn" : "Careers"}</button>)}</div><label className="sort-control"><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Sort jobs"><option value="score">Best score</option><option value="recent">Most recent</option><option value="company">Company A–Z</option></select></label></div></div>}
+          {view === "overview" ? <div className="overview-grid"><div className="job-list">{(dashboard?.history || []).slice(0, 6).map((job) => <JobRow key={`${job.url}-${job.scan_date}`} job={job} onOpen={setSelectedJob} />)}{!(dashboard?.history || []).length && <EmptyState label="History is empty" detail="Completed scans will appear here once roles are saved." action="Refresh data" onAction={() => loadDashboard(true)} />}</div><aside className="activity-card"><div className="activity-card__head"><span className="eyebrow">EVENT STREAM</span><span className="live-label"><span className="pulse-dot pulse-dot--live" />live</span></div><div className="event-list">{(dashboard?.events || []).slice(0, 7).map((event, index) => <div className="event" key={`${event.timestamp}-${index}`}><span className={`event-marker event-marker--${event.level.toLowerCase()}`} /><div><strong>{event.message}</strong><span>{formatDate(event.timestamp)}</span></div></div>)}{!(dashboard?.events || []).length && <p className="muted-copy">No log events available yet.</p>}</div></aside></div> : <div className="job-list"><div className="results-caption"><span>{filteredJobs.length} matches across {jobs.length} records</span><span>Showing {Math.min(visibleJobs.length, filteredJobs.length)} now</span></div>{visibleJobs.map((job) => <JobRow key={`${job.url}-${job.scan_date}-${job.title}`} job={job} onOpen={setSelectedJob} />)}{visibleJobs.length < sortedJobs.length && <button className="load-more" type="button" onClick={() => setVisibleCount((count) => count + 18)}>Load more roles <span>{sortedJobs.length - visibleJobs.length} remaining</span><Icon name="arrow" size={15} /></button>}{!filteredJobs.length && <EmptyState label={view === "new" ? "No new jobs in this inbox" : "No matching records"} detail={view === "new" ? (latestRun ? `${latestRun.label} checked ${latestRun.companies ? `${latestRun.companies} of ${latestRun.total_companies} company sites` : "LinkedIn"} and finished ${relativeTime(latestRun.timestamp)} with no new roles.` : "The latest completed scan has no jobs to review yet.") : "Try a different search or source filter."} action={view === "new" ? "Refresh data" : "Clear filters"} onAction={view === "new" ? () => loadDashboard(true) : () => { setQuery(""); setSource("all"); }} />}</div>}
         </section>
 
         <footer className="site-footer"><div className="footer-statement">Find the right work.<br /><span>Keep moving.</span></div><div className="footer-meta"><span>AUTOPILOT JOB HUNT / LOCAL CONSOLE</span><span>Updated {relativeTime(dashboard?.generated_at)} · {new Date().getFullYear()}</span></div></footer>
       </main>
 
+      <nav className="mobile-nav" aria-label="Mobile navigation">
+        {views.map((item) => <button key={item.id} className={view === item.id ? "is-selected" : ""} onClick={() => { setView(item.id); setMenuOpen(false); }} type="button"><Icon name={item.id === "overview" ? "activity" : item.id === "new" ? "check" : "archive"} size={18} /><span>{item.label}</span></button>)}
+      </nav>
+
       <dialog ref={dialogRef} className="job-dialog" onClose={() => setSelectedJob(null)}>
-        {selectedJob && <div className="dialog-content"><div className="dialog-top"><span className={`source-tag source-tag--${selectedJob.source === "linkedin" || selectedJob.source === "apify_linkedin" ? "linkedin" : "careers"}`}>{sourceLabel(selectedJob.source)}</span><button className="icon-button" onClick={() => dialogRef.current?.close()} type="button" aria-label="Close job details"><Icon name="x" size={18} /></button></div><div className="dialog-heading"><span className={scoreClass(selectedJob.score)}>{selectedJob.score ?? "—"}</span><div><p className="eyebrow">{selectedJob.company}</p><h2>{selectedJob.title}</h2><p>{selectedJob.location}</p></div></div><div className="dialog-grid"><div><span className="detail-label">Why it surfaced</span><p>{selectedJob.reason || "No scoring explanation recorded."}</p></div><div><span className="detail-label">Stack / signal</span><p>{selectedJob.stack || "No stack data recorded."}</p></div></div>{selectedJob.content && <div className="dialog-excerpt"><span className="detail-label">Description excerpt</span><p>{selectedJob.content}</p></div>}<a className="primary-link" href={selectedJob.url} target="_blank" rel="noreferrer">Open original listing <Icon name="external" size={16} /></a></div>}
+        {selectedJob && <div className="dialog-content"><div className="dialog-top"><span className={`source-tag source-tag--${selectedJob.source === "linkedin" || selectedJob.source === "apify_linkedin" ? "linkedin" : "careers"}`}>{sourceLabel(selectedJob.source)}</span><button className="icon-button" onClick={() => dialogRef.current?.close()} type="button" aria-label="Close job details"><Icon name="x" size={18} /></button></div><div className="dialog-heading"><span className={scoreClass(selectedJob.score)}>{selectedJob.score ?? "—"}</span><div><p className="eyebrow">{selectedJob.company}</p><h2>{selectedJob.title}</h2><p>{selectedJob.location}</p></div></div><div className="dialog-grid"><div><span className="detail-label">Why it surfaced</span><p>{selectedJob.reason || "No scoring explanation recorded."}</p></div><div><span className="detail-label">Stack / signal</span><p>{selectedJob.stack || "No stack data recorded."}</p></div><div><span className="detail-label">Scanned</span><p>{formatDate(selectedJob.scan_date)}</p></div><div><span className="detail-label">Application signal</span><p>{selectedJob.worth_applying == null ? "Not recorded" : selectedJob.worth_applying ? "Worth applying" : "Below application threshold"}</p></div></div>{selectedJob.region && <div className="dialog-excerpt"><span className="detail-label">Region</span><p>{selectedJob.region}</p></div>}{selectedJob.content && <div className="dialog-excerpt"><span className="detail-label">Description excerpt</span><p>{selectedJob.content}</p></div>}<a className="primary-link" href={selectedJob.url} target="_blank" rel="noreferrer">Open original listing <Icon name="external" size={16} /></a></div>}
       </dialog>
     </div>
   );

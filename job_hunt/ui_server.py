@@ -261,6 +261,76 @@ def _job_for_ui(job: dict) -> dict:
     }
 
 
+def _history_analytics(history: list) -> dict:
+    jobs = [job for job in history if isinstance(job, dict)]
+    scores = [job.get("score") for job in jobs if isinstance(job.get("score"), (int, float))]
+    source_counts = {"linkedin": 0, "careers": 0}
+    company_counts: dict[str, int] = {}
+    location_counts: dict[str, int] = {}
+    for job in jobs:
+        source = "linkedin" if job.get("source") in {"linkedin", "apify_linkedin"} else "careers"
+        source_counts[source] += 1
+        company = str(job.get("company") or "Unknown company")
+        location = str(job.get("location") or "Location not listed")
+        company_counts[company] = company_counts.get(company, 0) + 1
+        location_counts[location] = location_counts.get(location, 0) + 1
+
+    def ranked(values: dict[str, int], limit: int = 6) -> list[dict]:
+        return [
+            {"label": label, "count": count}
+            for label, count in sorted(values.items(), key=lambda item: (-item[1], item[0].lower()))[:limit]
+        ]
+
+    return {
+        "total": len(jobs),
+        "scored": len(scores),
+        "average_score": round(sum(scores) / len(scores)) if scores else None,
+        "high_score": sum(score >= 80 for score in scores),
+        "target_score": sum(score >= 60 for score in scores),
+        "sources": source_counts,
+        "score_buckets": [
+            {"label": "80+", "count": sum(score >= 80 for score in scores)},
+            {"label": "60–79", "count": sum(60 <= score < 80 for score in scores)},
+            {"label": "Below 60", "count": sum(score < 60 for score in scores)},
+        ],
+        "top_companies": ranked(company_counts),
+        "top_locations": ranked(location_counts),
+    }
+
+
+def _scan_runs(entries: list[dict]) -> list[dict]:
+    runs: list[dict] = []
+    for entry in entries:
+        message = entry["message"]
+        apify_match = _APIFY_COMPLETE_RE.search(message)
+        if apify_match:
+            runs.append(
+                {
+                    "source": "linkedin",
+                    "label": "LinkedIn discovery",
+                    "timestamp": entry["timestamp"],
+                    "jobs": int(apify_match.group("jobs")),
+                    "top_matches": int(apify_match.group("top")),
+                    "companies": None,
+                    "total_companies": None,
+                }
+            )
+        careers_match = _CAREERS_COMPLETE_RE.search(message)
+        if careers_match:
+            runs.append(
+                {
+                    "source": "careers",
+                    "label": "Company careers",
+                    "timestamp": entry["timestamp"],
+                    "jobs": int(careers_match.group("jobs")),
+                    "top_matches": int(careers_match.group("top")),
+                    "companies": int(careers_match.group("companies")),
+                    "total_companies": int(careers_match.group("total")),
+                }
+            )
+    return list(reversed(runs[-16:]))
+
+
 def build_dashboard() -> dict:
     last_scan = _read_json("last_scan.json", [])
     history = _read_json("job_history.json", [])
@@ -315,6 +385,8 @@ def build_dashboard() -> dict:
             "seen_linkedin_ids": len(seen.get("seen_apify_job_ids", [])) if isinstance(seen, dict) else 0,
         },
         "latest": {"apify": latest_apify, "careers": latest_careers},
+        "analytics": _history_analytics(history) if isinstance(history, list) else _history_analytics([]),
+        "runs": _scan_runs(entries),
         "events": recent_events,
         "new_jobs": [_job_for_ui(job) for job in last_scan] if isinstance(last_scan, list) else [],
         "history": [_job_for_ui(job) for job in reversed(history)] if isinstance(history, list) else [],
