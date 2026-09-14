@@ -372,9 +372,18 @@ def test_apify_run_input_passes_optional_actor_fields():
     assert out["companyId"] == ["1441"]
     assert out["urlPath"] == "/jobs/search"
     assert out["urlParam"] == [{"key": "f_TPR", "value": "r3600"}]
-    assert out["keywords"] == ["Node.js", "NestJS"]
-    assert out["excludeKeywords"] == ["Python", "Go"]
+    assert out["keywords"] == "Node.js, NestJS"
+    assert out["excludeKeywords"] == "Python, Go"
     assert out["skipJobId"] == ["4219847745"]
+
+
+def test_apify_run_input_keeps_keyword_strings_unchanged():
+    cfg = {"apify_linkedin": {"keywords": "Node.js, NestJS", "excludeKeywords": "Python, Go"}}
+
+    out = scanner._apify_run_input(cfg)
+
+    assert out["keywords"] == "Node.js, NestJS"
+    assert out["excludeKeywords"] == "Python, Go"
 
 
 def test_apify_keyword_filters_exclude_go_and_require_keywords():

@@ -272,6 +272,15 @@ def _is_configured_secret(value: str | None) -> bool:
     return not (value.startswith("YOUR_") or value.startswith("your_") or value.endswith("_here"))
 
 
+def _as_apify_string(value) -> str:
+    """Convert flexible config values to the string fields expected by Apify."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(item) for item in value if item)
+    return str(value)
+
+
 def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict:
     apify_cfg = config.get("apify_linkedin", {})
     run_input = {
@@ -288,7 +297,10 @@ def _apify_run_input(config: dict, seen_job_ids: set[str] | None = None) -> dict
     }
     for key in ("datePosted", "companyName", "companyId", "urlPath", "urlParam", "keywords", "excludeKeywords"):
         if key in apify_cfg:
-            run_input[key] = apify_cfg[key]
+            value = apify_cfg[key]
+            if key in ("keywords", "excludeKeywords"):
+                value = _as_apify_string(value)
+            run_input[key] = value
     if "datePosted" not in run_input:
         run_input["datePosted"] = "r54000"
     skip_job_ids = set(str(job_id) for job_id in apify_cfg.get("skipJobId", []) if job_id)
