@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 import "../../tokens.css";
 import "./styles.css";
 
@@ -185,3 +186,5 @@ function EmptyState({ label, detail, action, onAction }) {
 }
 
 export default App;
+
+createRoot(document.getElementById("root")).render(<App />);
