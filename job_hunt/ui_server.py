@@ -16,6 +16,8 @@ ROOT = Path.cwd()
 STATE_DIR = ROOT / "state"
 LOG_FILE = ROOT / "scan.log"
 STATIC_DIR = ROOT / "ui" / "dist"
+CONFIG_FILE = ROOT / "config.json"
+COMPANIES_FILE = ROOT / "companies.json"
 
 _LOG_RE = re.compile(r"^\[(?P<timestamp>[^]]+)\]\s+(?P<level>\w+)\s+(?P<message>.*)$")
 _START_RE = re.compile(r"Starting (?P<task>[\w-]+)")
@@ -27,11 +29,19 @@ _CAREERS_COMPLETE_RE = re.compile(
     r"=== Scan complete — (?P<companies>\d+)/(?P<total>\d+) companies, "
     r"(?P<jobs>\d+) jobs found, (?P<top>\d+) top matches"
 )
+_SCAN_PROGRESS_RE = re.compile(r"\[(?P<current>\d+)/(?P<total>\d+)\]\s+Scanning\s+(?P<company>.+?)(?:\.\.\.)?$")
 
 
 def _read_json(filename: str, default):
     try:
         return json.loads((STATE_DIR / filename).read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return default
+
+
+def _read_project_json(path: Path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, OSError, json.JSONDecodeError):
         return default
 
@@ -70,18 +80,153 @@ def _log_entries() -> list[dict]:
 
 def _task_states(entries: list[dict]) -> dict[str, dict]:
     states: dict[str, dict] = {}
+    active_task: str | None = None
     for entry in entries:
         message = entry["message"]
         start = _START_RE.search(message)
         finish = _FINISH_RE.search(message)
         if start:
             task = start.group("task")
-            states[task] = {"name": task, "running": True, "started_at": entry["timestamp"]}
-        elif finish:
+            state = states.setdefault(task, {"name": task})
+            state.update({"running": True, "started_at": entry["timestamp"], "phase": "starting"})
+            active_task = task
+
+        progress = _SCAN_PROGRESS_RE.search(message)
+        if progress and active_task:
+            current = int(progress.group("current"))
+            total = int(progress.group("total"))
+            state = states.setdefault(active_task, {"name": active_task, "running": True})
+            state.update(
+                {
+                    "phase": "scanning companies",
+                    "progress": {
+                        "current": current,
+                        "total": total,
+                        "company": progress.group("company"),
+                        "percent": round((current / total) * 100) if total else 0,
+                    },
+                    "last_update": entry["timestamp"],
+                }
+            )
+        elif active_task and "Fetching details" in message:
+            states[active_task].update({"phase": "fetching job details", "last_update": entry["timestamp"]})
+        elif active_task and "Scoring" in message:
+            states[active_task].update({"phase": "scoring matches", "last_update": entry["timestamp"]})
+        elif active_task and "State saved" in message:
+            states[active_task].update({"phase": "saving results", "last_update": entry["timestamp"]})
+
+        if finish:
             task = finish.group("finished") or finish.group("job")
             state = states.setdefault(task, {"name": task})
-            state.update({"running": False, "finished_at": entry["timestamp"]})
+            state.update({"running": False, "phase": "complete", "finished_at": entry["timestamp"]})
+            if active_task == task:
+                active_task = None
     return states
+
+
+def _scan_snapshot(entries: list[dict], task_states: dict[str, dict]) -> dict:
+    running = [task for task in task_states.values() if task.get("running")]
+    active = running[0] if running else None
+    latest = entries[-1] if entries else {}
+    return {
+        "active": bool(active),
+        "task": active.get("name", "") if active else "",
+        "phase": active.get("phase", "") if active else "",
+        "started_at": active.get("started_at", "") if active else "",
+        "last_log_at": latest.get("timestamp", ""),
+        "last_message": latest.get("message", ""),
+        "progress": active.get("progress") if active else None,
+    }
+
+
+def _ui_profile(config: dict) -> dict:
+    candidate = config.get("candidate", {}) if isinstance(config, dict) else {}
+    resume_value = str(candidate.get("resume_path") or "")
+    resume_path = Path(resume_value)
+    if not resume_path.is_absolute():
+        resume_path = ROOT / resume_path
+    return {
+        "name": candidate.get("name") or "Candidate profile",
+        "profile": candidate.get("profile") or "",
+        "seeking": candidate.get("seeking") or "",
+        "not_suitable": candidate.get("not_suitable") or "",
+        "min_score": candidate.get("min_score"),
+        "top_n": candidate.get("top_n"),
+        "included_titles": [str(value) for value in candidate.get("included_titles", []) if value],
+        "excluded_titles": [str(value) for value in candidate.get("excluded_titles", []) if value],
+        "excluded_locations": [str(value) for value in candidate.get("excluded_locations", []) if value],
+        "relocation_note": candidate.get("relocation_note") or "",
+        "resume_file": resume_path.name if resume_value else "",
+        "resume_exists": resume_path.is_file(),
+    }
+
+
+def _ui_search_config(config: dict, companies: list) -> dict:
+    apify = config.get("apify_linkedin", {}) if isinstance(config, dict) else {}
+    service = config.get("service", {}) if isinstance(config, dict) else {}
+    experience_labels = {
+        "1": "Internship",
+        "2": "Entry level",
+        "3": "Associate",
+        "4": "Mid-senior",
+        "5": "Director",
+        "6": "Executive",
+    }
+    contract_labels = {
+        "F": "Full-time",
+        "P": "Part-time",
+        "C": "Contract",
+        "T": "Temporary",
+        "V": "Volunteer",
+        "I": "Internship",
+    }
+    remote_labels = {"1": "On-site", "2": "Remote", "3": "Hybrid"}
+    date_posted = str(apify.get("datePosted") or "")
+    date_posted_label = date_posted
+    if date_posted.startswith("r") and date_posted[1:].isdigit():
+        hours = int(date_posted[1:]) // 3600
+        date_posted_label = f"{hours // 24} days" if hours >= 24 else f"{hours} hours"
+
+    def labels(values, mapping):
+        return [mapping.get(str(value), str(value)) for value in values if value]
+
+    def cadence(cron):
+        match = re.fullmatch(r"0 \*/(?P<hours>\d+) \* \* \*", str(cron))
+        return f"Every {match.group('hours')} hours" if match else str(cron)
+
+    return {
+        "linkedin": {
+            "enabled": bool(apify.get("enabled")),
+            "query": apify.get("title") or "",
+            "location": apify.get("location") or "",
+            "limit": apify.get("limit"),
+            "date_posted": date_posted,
+            "date_posted_label": date_posted_label,
+            "max_age_hours": apify.get("maxAgeHours"),
+            "experience_levels": labels(apify.get("experienceLevel", []), experience_labels),
+            "contract_types": labels(apify.get("contractType", []), contract_labels),
+            "remote_modes": labels(apify.get("remote", []), remote_labels),
+            "keywords": [str(value) for value in apify.get("keywords", []) if value],
+            "exclude_keywords": [str(value) for value in apify.get("excludeKeywords", []) if value],
+        },
+        "careers": {
+            "company_count": len(companies) if isinstance(companies, list) else 0,
+            "keywords": [str(value) for value in config.get("candidate", {}).get("included_titles", []) if value],
+            "exclude_keywords": [str(value) for value in config.get("candidate", {}).get("excluded_titles", []) if value],
+            "exclude_locations": [str(value) for value in config.get("candidate", {}).get("excluded_locations", []) if value],
+        },
+        "schedules": [
+            {
+                "name": schedule.get("name", ""),
+                "action": schedule.get("action", ""),
+                "cron": schedule.get("cron", ""),
+                "cadence": cadence(schedule.get("cron", "")),
+            }
+            for schedule in service.get("schedules", [])
+            if isinstance(schedule, dict)
+        ],
+        "timezone": service.get("timezone") or "",
+    }
 
 
 def _service_state() -> str:
@@ -120,8 +265,11 @@ def build_dashboard() -> dict:
     last_scan = _read_json("last_scan.json", [])
     history = _read_json("job_history.json", [])
     seen = _read_json("seen_jobs.json", {})
+    config = _read_project_json(CONFIG_FILE, {})
+    companies = _read_project_json(COMPANIES_FILE, [])
     entries = _log_entries()
     task_states = _task_states(entries)
+    scan = _scan_snapshot(entries, task_states)
 
     recent_events = []
     seen_event_keys: set[tuple[str, str]] = set()
@@ -157,6 +305,9 @@ def build_dashboard() -> dict:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "service": {"state": _service_state(), "tasks": list(task_states.values())},
+        "scan": scan,
+        "profile": _ui_profile(config),
+        "search": _ui_search_config(config, companies),
         "summary": {
             "new_jobs": len(last_scan) if isinstance(last_scan, list) else 0,
             "history_jobs": len(history) if isinstance(history, list) else 0,

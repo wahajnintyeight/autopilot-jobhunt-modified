@@ -74,6 +74,57 @@ function Metric({ label, value, detail, accent = false }) {
   return <div className={`metric ${accent ? "metric--accent" : ""}`}><span className="metric__label">{label}</span><strong>{value}</strong><span className="metric__detail">{detail}</span></div>;
 }
 
+function prettyLabel(value) {
+  return String(value || "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function TagList({ items, tone = "default" }) {
+  if (!items?.length) return <span className="tag-empty">Not configured</span>;
+  return <div className={`tag-list tag-list--${tone}`}>{items.map((item) => <span className="tag" key={item}>{item}</span>)}</div>;
+}
+
+function ScanPanel({ scan, latest }) {
+  const active = Boolean(scan?.active);
+  const progress = scan?.progress;
+  const percent = Math.min(100, Math.max(0, Number(progress?.percent) || 0));
+  return (
+    <article className="operator-card scan-card">
+      <div className="operator-card__head"><div><span className="card-kicker">RUN MONITOR</span><h3>{active ? prettyLabel(scan.task) : "No scan in progress"}</h3></div><span className={`state-badge ${active ? "state-badge--live" : ""}`}><span className="pulse-dot" />{active ? "live" : "idle"}</span></div>
+      <p className="operator-card__lede">{active ? `The worker is ${scan.phase || "working"}. This view refreshes every 3 seconds while it runs.` : "The worker is waiting for its next scheduled pass. The latest completed result stays visible here."}</p>
+      {active && progress ? <div className="scan-progress"><div className="progress-meta"><span>{progress.company || "Current company"}</span><strong>{progress.current} / {progress.total}</strong></div><div className="progress-track" aria-label={`${percent}% of companies scanned`}><span style={{ "--progress": percent / 100 }} /></div><div className="progress-foot"><span>{percent}% complete</span><span>{scan.phase || "working"}</span></div></div> : <div className="scan-idle"><span className="scan-idle__icon"><Icon name="check" size={17} /></span><div><strong>{latest ? `${latest.jobs} jobs found in the last pass` : "Waiting for the first completed pass"}</strong><span>{latest ? `${latest.top_matches} top matches · completed ${relativeTime(latest.timestamp)}` : "No completed scan recorded yet"}</span></div></div>}
+      <div className="operator-card__foot"><span>Last log {relativeTime(scan?.last_log_at)}</span><span>{active ? "Polling / 3 sec" : "Polling / 15 sec"}</span></div>
+    </article>
+  );
+}
+
+function ProfilePanel({ profile }) {
+  return (
+    <article className="operator-card profile-card">
+      <div className="operator-card__head"><div><span className="card-kicker">YOUR BRIEF</span><h3>{profile?.name || "Candidate profile"}</h3></div><span className={`resume-badge ${profile?.resume_exists ? "resume-badge--ready" : ""}`}><span className="pulse-dot" />{profile?.resume_exists ? "resume loaded" : "resume missing"}</span></div>
+      <p className="profile-summary">{profile?.profile || "Add a candidate profile to give the scorer more context."}</p>
+      <div className="profile-facts"><div><span>Target roles</span><strong>{profile?.seeking || "Not set"}</strong></div><div><span>Minimum match</span><strong>{profile?.min_score ?? "—"} / 100</strong></div><div><span>Top matches sent</span><strong>{profile?.top_n ?? "—"}</strong></div></div>
+      <div className="tag-group"><span>Include in role search</span><TagList items={profile?.included_titles} /></div>
+      <div className="tag-group"><span>Exclude from role search</span><TagList items={[...(profile?.excluded_titles || []), ...(profile?.excluded_locations || [])]} tone="muted" /></div>
+      {profile?.not_suitable && <div className="profile-boundary"><span>Scoring guardrails</span><p>{profile.not_suitable}</p></div>}
+    </article>
+  );
+}
+
+function SearchConfigPanel({ search }) {
+  const linkedin = search?.linkedin || {};
+  const careers = search?.careers || {};
+  return (
+    <article className="operator-card search-config-card">
+      <div className="operator-card__head"><div><span className="card-kicker">SEARCH COVERAGE</span><h3>What the agent is watching</h3></div><span className="coverage-count">{careers.company_count || 0} career sites</span></div>
+      <div className="search-config-grid">
+        <div className="config-block"><div className="config-block__title"><span className="source-avatar source-avatar--linkedin">in</span><div><strong>LinkedIn</strong><span className={`config-status ${linkedin.enabled ? "config-status--on" : ""}`}>{linkedin.enabled ? "enabled" : "disabled"}</span></div></div><p className="config-query">{linkedin.query || "No LinkedIn query configured"}</p><div className="config-facts"><span>Location <strong>{linkedin.location || "—"}</strong></span><span>Posted within <strong>{linkedin.date_posted_label || "—"}</strong></span><span>Result cap <strong>{linkedin.limit ?? "—"}</strong></span><span>Level <strong>{linkedin.experience_levels?.join(" · ") || "—"}</strong></span><span>Work mode <strong>{linkedin.remote_modes?.join(" · ") || "—"}</strong></span><span>Type <strong>{linkedin.contract_types?.join(" · ") || "—"}</strong></span></div><span className="tag-label">Keywords</span><TagList items={linkedin.keywords} /><span className="tag-label tag-label--muted">Excluded</span><TagList items={linkedin.exclude_keywords} tone="muted" /></div>
+        <div className="config-block"><div className="config-block__title"><span className="source-avatar source-avatar--careers">◎</span><div><strong>Company careers</strong><span className="config-status config-status--on">{careers.company_count || 0} sources</span></div></div><p className="config-query">Role titles are matched against each company’s careers page.</p><div className="config-facts"><span>Timezone <strong>{search?.timezone || "—"}</strong></span><span>Schedules <strong>{search?.schedules?.length || 0}</strong></span><span>Source <strong>Careers</strong></span></div><span className="tag-label">Role keywords</span><TagList items={careers.keywords} /><span className="tag-label tag-label--muted">Location exclusions</span><TagList items={careers.exclude_locations} tone="muted" /></div>
+      </div>
+      <div className="schedule-list">{(search?.schedules || []).map((schedule) => <div className="schedule-row" key={schedule.name}><span className="pulse-dot" /><strong>{prettyLabel(schedule.name)}</strong><span>{schedule.cadence || prettyLabel(schedule.action)}</span><code>{schedule.cron}</code></div>)}{!(search?.schedules || []).length && <span className="tag-empty">No schedules configured</span>}</div>
+    </article>
+  );
+}
+
 function App() {
   const [dashboard, setDashboard] = useState(null);
   const [view, setView] = useState("overview");
@@ -104,7 +155,7 @@ function App() {
 
   useEffect(() => {
     loadDashboard();
-    const timer = window.setInterval(() => loadDashboard(), 15000);
+    const timer = window.setInterval(() => loadDashboard(), dashboard?.scan?.active ? 3000 : 15000);
     const keyboard = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -120,18 +171,16 @@ function App() {
     };
     window.addEventListener("keydown", keyboard);
     return () => { window.clearInterval(timer); window.removeEventListener("keydown", keyboard); };
-  }, []);
+  }, [dashboard?.scan?.active]);
 
   useEffect(() => {
     if (selectedJob && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
   }, [selectedJob]);
 
   const summary = dashboard?.summary || {};
-  const tasks = dashboard?.service?.tasks || [];
-  const runningTasks = tasks.filter((task) => task.running);
   const jobs = view === "new" ? (dashboard?.new_jobs || []) : (dashboard?.history || []);
   const filteredJobs = useMemo(() => jobs.filter((job) => {
-    const haystack = `${job.title} ${job.company} ${job.location} ${job.stack}`.toLowerCase();
+    const haystack = `${job.title} ${job.company} ${job.location} ${job.stack} ${job.reason} ${job.content}`.toLowerCase();
     const matchesQuery = !query.trim() || haystack.includes(query.trim().toLowerCase());
     const isLinkedIn = job.source === "linkedin" || job.source === "apify_linkedin";
     return matchesQuery && (source === "all" || (source === "linkedin" ? isLinkedIn : !isLinkedIn));
@@ -139,10 +188,13 @@ function App() {
 
   const latestApify = dashboard?.latest?.apify;
   const latestCareers = dashboard?.latest?.careers;
+  const scan = dashboard?.scan || {};
+  const profile = dashboard?.profile || {};
+  const search = dashboard?.search || {};
   const serviceActive = dashboard?.service?.state === "active";
-  const statusLabel = serviceActive ? (runningTasks.length ? "Processing a scan" : "Standing by") : "Unavailable";
+  const statusLabel = serviceActive ? (scan.active ? "Processing a scan" : "Standing by") : "Unavailable";
 
-  if (loading && !dashboard) return <div className="boot-screen"><span className="boot-mark">A</span><p>Reading the control room…</p></div>;
+  if (loading && !dashboard) return <div className="boot-screen"><span className="boot-mark">A</span><p>Loading your job workspace…</p></div>;
 
   return (
     <div className="app-shell">
@@ -179,17 +231,20 @@ function App() {
             <div className="readout-head"><span>RUN STATE</span><span className={serviceActive ? "readout-live" : ""}><span className="pulse-dot" />{serviceActive ? "LIVE" : "OFFLINE"}</span></div>
             <div className="readout-row"><span>daemon</span><strong>{statusLabel}</strong></div>
             <div className="readout-row"><span>last update</span><strong>{relativeTime(dashboard?.generated_at)}</strong></div>
-            <div className="readout-row"><span>active jobs</span><strong>{runningTasks.length || "—"}</strong></div>
+            <div className="readout-row"><span>scan progress</span><strong>{scan.active && scan.progress ? `${scan.progress.current}/${scan.progress.total}` : "Idle"}</strong></div>
           </div>
         </section>
 
         <section className="signal-strip" aria-label="Scan status" aria-live="polite">
-          <div className="signal-strip__lead"><span className={`status-orb ${runningTasks.length ? "status-orb--running" : ""}`}><Icon name={runningTasks.length ? "activity" : "check"} size={20} /></span><div><span className="signal-kicker">BACKGROUND SERVICE</span><strong>{serviceActive ? (runningTasks.length ? "Processing a scan" : "All systems operational") : "Service unavailable"}</strong><span className="signal-detail">{runningTasks.length ? runningTasks.map((task) => task.name.replaceAll("_", " ")).join(" · ") : "Watching configured schedules"}</span></div></div>
+          <div className="signal-strip__lead"><span className={`status-orb ${scan.active ? "status-orb--running" : ""}`}><Icon name={scan.active ? "activity" : "check"} size={20} /></span><div><span className="signal-kicker">BACKGROUND SERVICE</span><strong>{serviceActive ? (scan.active ? "Processing a scan" : "All systems operational") : "Service unavailable"}</strong><span className="signal-detail">{scan.active ? `${prettyLabel(scan.task)} · ${scan.phase || "working"}` : "Watching configured schedules"}</span></div></div>
           <div className="signal-stat"><span>LINKEDIN PASS</span><strong>{latestApify ? formatDate(latestApify.timestamp) : "No run recorded"}</strong><small>{latestApify ? `${latestApify.jobs} jobs · ${latestApify.top_matches} top matches` : "Waiting for first result"}</small></div>
           <div className="signal-stat"><span>CAREERS PASS</span><strong>{latestCareers ? formatDate(latestCareers.timestamp) : "No run recorded"}</strong><small>{latestCareers ? `${latestCareers.jobs} jobs · ${latestCareers.top_matches} top matches` : "Waiting for first result"}</small></div>
         </section>
 
         <section className="metrics-grid" aria-label="Job totals"><Metric label="New jobs" value={summary.new_jobs ?? 0} detail="last completed scan" accent /><Metric label="History" value={summary.history_jobs ?? 0} detail="saved job records" /><Metric label="Seen URLs" value={(summary.seen_urls ?? 0).toLocaleString()} detail="deduplicated" /><Metric label="LinkedIn IDs" value={(summary.seen_linkedin_ids ?? 0).toLocaleString()} detail="Apify memory" /></section>
+
+        <section className="operator-grid" aria-label="Live scan and candidate profile"><ScanPanel scan={scan} latest={latestApify || latestCareers} /><ProfilePanel profile={profile} /></section>
+        <section className="search-config-section" aria-label="Search configuration"><SearchConfigPanel search={search} /></section>
 
         <section className="content-section">
           <div className="section-head"><div><p className="eyebrow">{view === "overview" ? "RECENT SIGNAL" : view === "new" ? "INBOX" : "ARCHIVE"}</p><h2>{view === "overview" ? "What needs attention" : view === "new" ? "New jobs" : "Job history"}</h2></div><div className="section-head__meta">{view === "overview" ? ((dashboard?.history || []).length ? "Latest saved roles" : "No saved roles yet") : `${filteredJobs.length} shown / ${jobs.length} total`}</div></div>
