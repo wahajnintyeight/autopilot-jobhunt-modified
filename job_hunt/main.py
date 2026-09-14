@@ -10,6 +10,7 @@ Usage:
   autopilot export --days 7   — export jobs from last 7 days (requires scan history)
   autopilot export --days 7 --min 60  — combine filters
   autopilot apify            — run the Apify LinkedIn scrape + scoring pipeline
+  autopilot ui               — serve the local read-only monitoring dashboard
   autopilot mcp               — run the MCP server over stdio (for Claude Code)
 """
 import csv
@@ -271,6 +272,11 @@ def main() -> None:
         tail_file(os.getenv("AUTOPILOT_LOG_FILE", "scan.log"))
         return
 
+    if cmd == "ui":
+        from job_hunt.ui_server import main as run_ui_server
+        run_ui_server(sys.argv[2:])
+        return
+
     # export reads local scan state only — no API keys needed, so skip load_config()
     if cmd == "export":
         min_score, days = _parse_export_args(sys.argv)
@@ -294,7 +300,7 @@ def main() -> None:
         draft_application(config, sys.argv[2])
 
     else:
-        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | apify | service | logs | draft | export | mcp")
+        sys.exit(f"Unknown command: {cmd}\nUse: init | scan | apify | service | logs | ui | draft | export | mcp")
 
 
 if __name__ == "__main__":

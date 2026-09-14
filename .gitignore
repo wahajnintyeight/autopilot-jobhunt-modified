@@ -5,6 +5,7 @@ dist/
 build/
 .venv/
 venv/
+ui/node_modules/
 
 # Secrets — NEVER commit
 .env

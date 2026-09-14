@@ -1,0 +1,15 @@
+[Unit]
+Description=autopilot-jobhunt read-only dashboard
+Wants=network-online.target
+After=network-online.target autopilot-jobhunt.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/autopilot-jobhunt
+ExecStart=/var/www/autopilot-jobhunt/venv/bin/autopilot ui --host 127.0.0.1 --port 4173
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
