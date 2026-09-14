@@ -170,9 +170,9 @@ function App() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-grid" aria-hidden="true" />
           <div className="hero-content">
-            <p className="eyebrow">JOB HUNT / CONTROL ROOM</p>
-            <h1 id="hero-title">See the <span>signal.</span><br />Move with intent.</h1>
-            <p className="hero-lede">One surface for the service, the latest scan, and every role worth a closer look.</p>
+            <p className="eyebrow">AUTOPILOT / JOB OPERATIONS</p>
+            <h1 id="hero-title">Every role.<br /><span>One clear next move.</span></h1>
+            <p className="hero-lede">Monitor the service, review fresh matches, and move from discovery to application without losing the thread.</p>
             <div className="hero-actions"><button className="action-button action-button--accent" onClick={() => loadDashboard(true)} type="button">Refresh signal <Icon name="arrow" size={16} /></button><span className="hero-note">AUTO-REFRESH / 15 SEC</span></div>
           </div>
           <div className="hero-readout" aria-label="Current service readout">
@@ -197,7 +197,7 @@ function App() {
           {view === "overview" ? <div className="overview-grid"><div className="job-list">{(dashboard?.history || []).slice(0, 6).map((job) => <JobRow key={`${job.url}-${job.scan_date}`} job={job} onOpen={setSelectedJob} />)}{!(dashboard?.history || []).length && <EmptyState label="History is empty" detail="Completed scans will appear here once roles are saved." action="Refresh data" onAction={() => loadDashboard(true)} />}</div><aside className="activity-card"><div className="activity-card__head"><span className="eyebrow">EVENT STREAM</span><span className="live-label"><span className="pulse-dot pulse-dot--live" />live</span></div><div className="event-list">{(dashboard?.events || []).slice(0, 7).map((event, index) => <div className="event" key={`${event.timestamp}-${index}`}><span className={`event-marker event-marker--${event.level.toLowerCase()}`} /><div><strong>{event.message}</strong><span>{formatDate(event.timestamp)}</span></div></div>)}{!(dashboard?.events || []).length && <p className="muted-copy">No log events available yet.</p>}</div></aside></div> : <div className="job-list">{filteredJobs.map((job) => <JobRow key={`${job.url}-${job.scan_date}-${job.title}`} job={job} onOpen={setSelectedJob} />)}{!filteredJobs.length && <EmptyState label={view === "new" ? "No new jobs" : "No matching records"} detail={view === "new" ? "The latest completed scan has no jobs to review." : "Try a different search or source filter."} action="Clear filters" onAction={() => { setQuery(""); setSource("all"); }} />}</div>}
         </section>
 
-        <footer className="site-footer"><div className="footer-statement">Read the signal.<br /><span>Make the next move.</span></div><div className="footer-meta"><span>AUTOPILOT JOB HUNT / LOCAL CONSOLE</span><span>Updated {relativeTime(dashboard?.generated_at)} · {new Date().getFullYear()}</span></div></footer>
+        <footer className="site-footer"><div className="footer-statement">Find the right work.<br /><span>Keep moving.</span></div><div className="footer-meta"><span>AUTOPILOT JOB HUNT / LOCAL CONSOLE</span><span>Updated {relativeTime(dashboard?.generated_at)} · {new Date().getFullYear()}</span></div></footer>
       </main>
 
       <dialog ref={dialogRef} className="job-dialog" onClose={() => setSelectedJob(null)}>
