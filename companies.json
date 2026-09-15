@@ -302,5 +302,14 @@
   { "name": "Figma", "careers_url": "https://www.figma.com/careers/", "search_domain": "figma.com", "location": "San Francisco, CA / Remote", "region": "US" },
   { "name": "Notion", "careers_url": "https://www.notion.com/careers", "search_domain": "notion.com", "location": "San Francisco, CA / Remote", "region": "US" },
   { "name": "Airtable", "careers_url": "https://airtable.com/careers", "search_domain": "airtable.com", "location": "San Francisco, CA / Remote", "region": "US" },
-  { "name": "MongoDB", "careers_url": "https://www.mongodb.com/careers", "search_domain": "mongodb.com", "location": "New York, NY / Remote", "region": "US" }
+  { "name": "MongoDB", "careers_url": "https://www.mongodb.com/careers", "search_domain": "mongodb.com", "location": "New York, NY / Remote", "region": "US" },
+  { "name": "Ericsson", "careers_url": "https://jobs.ericsson.com/careers", "search_domain": "ericsson.com", "location": "Stockholm, Sweden / Europe", "region": "EU" },
+  { "name": "Nokia", "careers_url": "https://www.nokia.com/careers/", "search_domain": "nokia.com", "location": "Espoo, Finland / Europe", "region": "EU" },
+  { "name": "SAP", "careers_url": "https://jobs.sap.com/", "search_domain": "sap.com", "location": "Walldorf, Germany / Europe", "region": "EU" },
+  { "name": "Bosch", "careers_url": "https://www.bosch.com/careers/", "search_domain": "bosch.com", "location": "Stuttgart, Germany / Europe", "region": "EU" },
+  { "name": "Airbus", "careers_url": "https://www.airbus.com/en/careers", "search_domain": "airbus.com", "location": "Toulouse, France / Europe", "region": "EU" },
+  { "name": "Roche", "careers_url": "https://careers.roche.com/global/en", "search_domain": "roche.com", "location": "Basel, Switzerland / Europe", "region": "EU" },
+  { "name": "Novartis", "careers_url": "https://www.novartis.com/careers/career-search", "search_domain": "novartis.com", "location": "Basel, Switzerland / Europe", "region": "EU" },
+  { "name": "AstraZeneca", "careers_url": "https://careers.astrazeneca.com/search-jobs/global", "search_domain": "astrazeneca.com", "location": "Cambridge, United Kingdom / Europe", "region": "EU" },
+  { "name": "Vodafone", "careers_url": "https://careers.vodafone.com/", "search_domain": "vodafone.com", "location": "London, United Kingdom / Europe", "region": "EU" }
 ]
