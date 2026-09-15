@@ -160,7 +160,7 @@ code, kbd, .eyebrow, .brand-type, .header-health, .hero-note, .readout-head, .re
 .schedule-row strong { color: var(--color-ink-2); font-family: var(--font-body); font-size: 0.75rem; font-weight: 500; }
 .schedule-row code { color: var(--color-muted); font-size: 0.58rem; }
 
-.content-section { padding-block: clamp(4rem, 8vw, 8rem); }
+.content-section { scroll-margin-block-start: 6rem; padding-block: clamp(4rem, 8vw, 8rem); }
 .section-head { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: var(--space-xl); margin-block-end: var(--space-xl); }
 .section-head .eyebrow { margin-block-end: var(--space-xs); color: var(--color-signal); }
 .section-head__meta { justify-self: start; color: var(--color-muted); font-size: 0.61rem; white-space: nowrap; }

@@ -199,7 +199,8 @@ function CompaniesWorkspace({ companies, scan, onSaved }) {
 
 function App() {
   const [dashboard, setDashboard] = useState(null);
-  const [view, setView] = useState("overview");
+  const initialView = views.some((item) => item.id === window.location.hash.slice(1)) ? window.location.hash.slice(1) : "overview";
+  const [view, setView] = useState(initialView);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("all");
   const [sortBy, setSortBy] = useState("score");
@@ -211,6 +212,15 @@ function App() {
   const [selectedJob, setSelectedJob] = useState(null);
   const dialogRef = useRef(null);
   const searchRef = useRef(null);
+  const contentRef = useRef(null);
+
+  function navigateTo(nextView) {
+    setView(nextView);
+    setMenuOpen(false);
+    const hash = nextView === "overview" ? "" : `#${nextView}`;
+    if (window.location.hash !== hash) window.history.pushState({}, "", `${window.location.pathname}${window.location.search}${hash}`);
+    window.requestAnimationFrame(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   async function loadDashboard(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -233,8 +243,7 @@ function App() {
     const keyboard = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setView("history");
-        setMenuOpen(false);
+        navigateTo("history");
         window.setTimeout(() => searchRef.current?.focus(), 0);
       }
       if (event.key.toLowerCase() === "r" && !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) loadDashboard(true);
@@ -243,9 +252,19 @@ function App() {
         setMenuOpen(false);
       }
     };
+    const browserNavigation = () => {
+      const nextView = views.some((item) => item.id === window.location.hash.slice(1)) ? window.location.hash.slice(1) : "overview";
+      setView(nextView);
+      window.requestAnimationFrame(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
     window.addEventListener("keydown", keyboard);
-    return () => { window.clearInterval(timer); window.removeEventListener("keydown", keyboard); };
+    window.addEventListener("popstate", browserNavigation);
+    return () => { window.clearInterval(timer); window.removeEventListener("keydown", keyboard); window.removeEventListener("popstate", browserNavigation); };
   }, [dashboard?.scan?.active]);
+
+  useEffect(() => {
+    if (initialView !== "overview") window.requestAnimationFrame(() => contentRef.current?.scrollIntoView({ behavior: "auto", block: "start" }));
+  }, []);
 
   useEffect(() => {
     if (selectedJob && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
@@ -288,15 +307,15 @@ function App() {
     <div className="app-shell">
       <header className="site-header">
         <div className="site-header__inner">
-          <button className="brand-lockup" onClick={() => { setView("overview"); setMenuOpen(false); }} type="button" aria-label="Autopilot overview">
+          <button className="brand-lockup" onClick={() => navigateTo("overview")} type="button" aria-label="Autopilot overview">
             <span className="brand-mark">A</span>
             <span className="brand-type">AUTOPILOT<br /><b>JOB HUNT</b></span>
           </button>
           <nav className={`site-nav ${menuOpen ? "site-nav--open" : ""}`} aria-label="Primary navigation">
-            {views.map((item) => <button key={item.id} className={`site-nav__link ${view === item.id ? "site-nav__link--active" : ""}`} onClick={() => { setView(item.id); setMenuOpen(false); }} type="button"><span>{item.key}</span>{item.label}</button>)}
+            {views.map((item) => <button key={item.id} className={`site-nav__link ${view === item.id ? "site-nav__link--active" : ""}`} onClick={() => navigateTo(item.id)} type="button"><span>{item.key}</span>{item.label}</button>)}
           </nav>
           <div className="site-header__tools">
-            <button className="header-search" onClick={() => { setView("history"); setMenuOpen(false); window.setTimeout(() => searchRef.current?.focus(), 0); }} type="button"><Icon name="search" size={15} /><span>Search roles</span><kbd>⌘K</kbd></button>
+            <button className="header-search" onClick={() => { navigateTo("history"); window.setTimeout(() => searchRef.current?.focus(), 0); }} type="button"><Icon name="search" size={15} /><span>Search roles</span><kbd>⌘K</kbd></button>
             <span className={`header-health ${serviceActive ? "header-health--live" : ""}`}><span className="pulse-dot" />{serviceActive ? "live" : "offline"}</span>
             <button className={`icon-button ${refreshing ? "is-loading" : ""}`} onClick={() => loadDashboard(true)} type="button" aria-label="Refresh dashboard"><Icon name="refresh" size={17} /></button>
             <button className="menu-toggle" onClick={() => setMenuOpen((open) => !open)} type="button" aria-label="Toggle navigation" aria-expanded={menuOpen}><Icon name={menuOpen ? "x" : "menu"} size={19} /></button>
@@ -334,7 +353,7 @@ function App() {
         <section className="operator-grid" aria-label="Live scan and candidate profile"><ScanPanel scan={scan} latest={latestApify || latestCareers} /><ProfilePanel profile={profile} /></section>
         <section className="search-config-section" aria-label="Search configuration"><SearchConfigPanel search={search} /></section>
 
-        <section className="content-section">
+        <section className="content-section" ref={contentRef}>
           {view === "companies" ? <CompaniesWorkspace companies={dashboard?.companies || []} scan={scan} onSaved={() => loadDashboard(true)} /> : <>
             {view === "overview" ? <div className="section-head"><div><p className="eyebrow">RECENT SIGNAL</p><h2>What needs attention</h2></div><div className="section-head__meta">{(dashboard?.history || []).length ? "Latest saved roles" : "No saved roles yet"}</div></div> : <WorkspaceHeader view={view} summary={summary} analytics={analytics} latestRun={latestRun} />}
             {view === "history" && <><HistoryInsights analytics={analytics} /><RunTimeline runs={runs} /></>}
@@ -347,7 +366,7 @@ function App() {
       </main>
 
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {views.map((item) => <button key={item.id} className={view === item.id ? "is-selected" : ""} onClick={() => { setView(item.id); setMenuOpen(false); }} type="button"><Icon name={item.id === "overview" ? "activity" : item.id === "new" ? "check" : item.id === "history" ? "archive" : "server"} size={18} /><span>{item.label}</span></button>)}
+        {views.map((item) => <button key={item.id} className={view === item.id ? "is-selected" : ""} onClick={() => navigateTo(item.id)} type="button"><Icon name={item.id === "overview" ? "activity" : item.id === "new" ? "check" : item.id === "history" ? "archive" : "server"} size={18} /><span>{item.label}</span></button>)}
       </nav>
 
       <dialog ref={dialogRef} className="job-dialog" onClose={() => setSelectedJob(null)}>
