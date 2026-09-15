@@ -14,7 +14,7 @@ body::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
 button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 button:active { transform: translateY(1px); }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 h1, h2, p { margin: 0; }
