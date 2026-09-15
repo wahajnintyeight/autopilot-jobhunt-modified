@@ -1,11 +1,14 @@
-"""Local read-only dashboard server for autopilot-jobhunt."""
+"""Local dashboard server for autopilot-jobhunt."""
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import mimetypes
+import os
 import re
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -261,6 +264,96 @@ def _job_for_ui(job: dict) -> dict:
     }
 
 
+def _company_for_ui(company: dict, history: list) -> dict:
+    name = str(company.get("name") or "Unnamed company")
+    company_jobs = [
+        job for job in history
+        if isinstance(job, dict) and str(job.get("company") or "").casefold() == name.casefold()
+    ]
+    careers_urls = company.get("careers_urls") or []
+    if not isinstance(careers_urls, list):
+        careers_urls = []
+    urls = [str(company.get("careers_url") or "")] + [str(url) for url in careers_urls if url]
+    unique_urls = list(dict.fromkeys(url for url in urls if url))
+    last_job = max((str(job.get("scan_date") or "") for job in company_jobs), default="")
+    return {
+        "name": name,
+        "careers_url": unique_urls[0] if unique_urls else "",
+        "careers_urls": unique_urls,
+        "search_domain": str(company.get("search_domain") or ""),
+        "location": str(company.get("location") or "Location not specified"),
+        "region": str(company.get("region") or "Unclassified"),
+        "jobs_found": len(company_jobs),
+        "last_job_at": last_job,
+        "source_status": "configured",
+    }
+
+
+def _add_company(payload: dict) -> dict:
+    if not isinstance(payload, dict):
+        raise ValueError("Request body must be an object")
+
+    name = str(payload.get("name") or "").strip()
+    careers_url = str(payload.get("careers_url") or "").strip()
+    parsed_url = urlparse(careers_url)
+    if not 2 <= len(name) <= 120:
+        raise ValueError("Company name must be between 2 and 120 characters")
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname or parsed_url.username:
+        raise ValueError("Careers URL must be a valid http or https URL")
+
+    hostname = parsed_url.hostname.casefold().strip(".")
+    try:
+        host_address = ipaddress.ip_address(hostname)
+    except ValueError:
+        host_address = None
+    if host_address and not host_address.is_global:
+        raise ValueError("Careers URL must use a public domain")
+    if "." not in hostname or not re.fullmatch(r"[a-z0-9.-]+", hostname):
+        raise ValueError("Careers URL must use a public domain")
+    search_domain = str(payload.get("search_domain") or hostname.removeprefix("www.")).strip().casefold().strip(".")
+    if len(search_domain) > 255 or not re.fullmatch(r"[a-z0-9.-]+", search_domain) or "." not in search_domain:
+        raise ValueError("Search domain must be a valid domain name")
+
+    location = str(payload.get("location") or "Location not specified").strip()[:160]
+    region = str(payload.get("region") or "Unclassified").strip()[:40]
+    company = {
+        "name": name,
+        "careers_url": careers_url,
+        "search_domain": search_domain,
+        "location": location or "Location not specified",
+        "region": region or "Unclassified",
+    }
+
+    companies = _read_project_json(COMPANIES_FILE, [])
+    if not isinstance(companies, list):
+        raise ValueError("companies.json is not a list")
+    normalized_url = careers_url.rstrip("/").casefold()
+    for existing in companies:
+        if not isinstance(existing, dict):
+            continue
+        existing_url = str(existing.get("careers_url") or "").rstrip("/").casefold()
+        if str(existing.get("name") or "").strip().casefold() == name.casefold() or existing_url == normalized_url:
+            raise FileExistsError("That company or careers URL is already configured")
+
+    companies.append(company)
+    serialized = json.dumps(companies, ensure_ascii=False, indent=2) + "\n"
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=COMPANIES_FILE.parent, prefix=".companies.", delete=False
+        ) as temporary:
+            temporary.write(serialized)
+            temporary_path = temporary.name
+        os.replace(temporary_path, COMPANIES_FILE)
+    except OSError:
+        if "temporary_path" in locals():
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass
+        raise
+    return _company_for_ui(company, [])
+
+
 def _history_analytics(history: list) -> dict:
     jobs = [job for job in history if isinstance(job, dict)]
     scores = [job.get("score") for job in jobs if isinstance(job.get("score"), (int, float))]
@@ -387,6 +480,7 @@ def build_dashboard() -> dict:
         "latest": {"apify": latest_apify, "careers": latest_careers},
         "analytics": _history_analytics(history) if isinstance(history, list) else _history_analytics([]),
         "runs": _scan_runs(entries),
+        "companies": [_company_for_ui(company, history if isinstance(history, list) else []) for company in companies if isinstance(company, dict)],
         "events": recent_events,
         "new_jobs": [_job_for_ui(job) for job in last_scan] if isinstance(last_scan, list) else [],
         "history": [_job_for_ui(job) for job in reversed(history)] if isinstance(history, list) else [],
@@ -403,6 +497,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_json(self, payload: dict, status: int = 200) -> None:
+        self._send_bytes(json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", status)
 
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
@@ -426,6 +523,36 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_bytes(candidate.read_bytes(), mimetypes.guess_type(candidate.name)[0] or "application/octet-stream")
         except OSError:
             self._send_bytes(b"Not found", "text/plain; charset=utf-8", 404)
+
+    def do_POST(self) -> None:  # noqa: N802
+        path = unquote(urlparse(self.path).path)
+        if path != "/api/companies":
+            self._send_json({"error": "Not found"}, 404)
+            return
+
+        origin = self.headers.get("Origin")
+        if origin and urlparse(origin).hostname != self.headers.get("Host", "").split(":", 1)[0]:
+            self._send_json({"error": "Cross-origin writes are not allowed"}, 403)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0 or length > 16_384:
+                raise ValueError("Request body is missing or too large")
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            company = _add_company(payload)
+        except json.JSONDecodeError:
+            self._send_json({"error": "Request body must be valid JSON"}, 400)
+            return
+        except FileExistsError as error:
+            self._send_json({"error": str(error)}, 409)
+            return
+        except ValueError as error:
+            self._send_json({"error": str(error)}, 400)
+            return
+        except OSError:
+            self._send_json({"error": "Could not update companies.json"}, 500)
+            return
+        self._send_json({"company": company}, 201)
 
     def log_message(self, format: str, *args) -> None:
         return
