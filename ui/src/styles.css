@@ -384,6 +384,12 @@ code, kbd, .eyebrow, .brand-type, .header-health, .hero-note, .readout-head, .re
 .company-card__foot > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .company-card__foot a { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--space-2xs); color: var(--color-ink); font-size: 0.57rem; text-decoration: none; }
 .company-card__foot a:hover { color: var(--color-signal); }
+.company-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-block-start: var(--space-lg); border-block-start: 1px solid var(--color-rule); padding-block-start: var(--space-md); }
+.company-pagination button { min-height: 2.75rem; border: 1px solid var(--color-rule); border-radius: var(--radius-sm); background: var(--color-paper-2); cursor: pointer; padding-inline: var(--space-sm); color: var(--color-ink); font-size: 0.72rem; white-space: nowrap; transition: background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.company-pagination button:hover:not(:disabled) { border-color: var(--color-rule-strong); background: var(--color-paper-3); }
+.company-pagination button:disabled { color: var(--color-muted); }
+.company-pagination > span { display: grid; justify-items: center; gap: var(--space-2xs); color: var(--color-ink); font-family: var(--font-mono); font-size: 0.59rem; white-space: nowrap; }
+.company-pagination small { color: var(--color-muted); font-size: 0.52rem; }
 
 @media (max-width: 64rem) {
   .workspace-header { grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.55fr); }
@@ -413,6 +419,8 @@ code, kbd, .eyebrow, .brand-type, .header-health, .hero-note, .readout-head, .re
   .directory-controls { align-items: stretch; flex-direction: column; min-width: 0; }
   .directory-controls .search-field, .directory-controls select { width: 100%; }
   .company-list { grid-template-columns: minmax(0, 1fr); }
+  .company-pagination { margin-block-start: var(--space-md); }
+  .company-pagination button { flex: 0 0 auto; }
   .mobile-nav { position: fixed; inset-inline: var(--space-sm); inset-block-end: var(--space-sm); z-index: 8; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2xs); border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-paper-2) 94%, var(--color-clear)); box-shadow: 0 10px 30px var(--color-shadow-modal); padding: var(--space-2xs); padding-bottom: max(var(--space-2xs), env(safe-area-inset-bottom)); backdrop-filter: blur(16px); }
   .mobile-nav button { display: grid; min-height: 3.25rem; place-items: center; gap: var(--space-2xs); border: 1px solid transparent; border-radius: var(--radius-sm); background: var(--color-clear); color: var(--color-muted); cursor: pointer; font-size: 0.62rem; }
   .mobile-nav button.is-selected { border-color: var(--color-rule); background: var(--color-paper-3); color: var(--color-ink); }
