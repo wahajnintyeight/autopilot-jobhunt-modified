@@ -62,6 +62,24 @@ def test_format_telegram_message():
     assert "ML Eng" in msg and "Apply" in msg and "1 matches" in msg
 
 
+def test_unwrap_redirect_url():
+    redirect = "/url?opi=89978449&q=https://remote.com/jobs/acme/backend-engineer&sa=U"
+    assert scanner._unwrap_redirect_url(redirect) == "https://remote.com/jobs/acme/backend-engineer"
+
+
+def test_format_discord_message_uses_direct_application_url():
+    jobs = [{
+        "company": "Acme",
+        "title": "T",
+        "location": "Remote",
+        "url": "/url?opi=1&q=https://remote.com/jobs/acme/backend-engineer&sa=U",
+        "apply_url": "https://apply.acme.example/backend-engineer",
+    }]
+    msg = scanner.format_discord_message(jobs, "01 Jan 2026")
+    assert "[Apply](https://apply.acme.example/backend-engineer)" in msg
+    assert "/url?" not in msg
+
+
 # --- state ---------------------------------------------------------------------
 
 def test_state_roundtrip(tmp_path, monkeypatch):
@@ -206,6 +224,16 @@ def test_discover_job_urls(monkeypatch):
     urls = {j["url"] for j in out}
     assert "https://x.co/jobs/ml-engineer-abcd" in urls
     assert "https://x.co/jobs/staff-ai-wxyz" in urls
+
+
+def test_discover_job_urls_unwraps_search_redirects(monkeypatch):
+    tf = _fake_tf(search_urls=[
+        "/url?opi=1&q=https://remote.com/jobs/acme/backend-engineer&sa=U",
+    ])
+    company = {"name": "Acme", "careers_url": "https://x.co/careers", "search_domain": "x.co",
+               "location": "Remote", "region": "Remote"}
+    out = scanner.discover_job_urls(tf, company, set(), {"candidate": {"included_titles": ["backend engineer"]}})
+    assert [job["url"] for job in out] == ["https://remote.com/jobs/acme/backend-engineer"]
     assert all(j["company"] == "Acme" for j in out)
 
 

@@ -5,6 +5,7 @@ import re
 import time
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from tinyfish import RateLimitError, TinyFish
 
@@ -319,6 +320,29 @@ def _first_present(item: dict, keys: list[str], default: str = "") -> str:
     return default
 
 
+def _unwrap_redirect_url(url: str) -> str:
+    """Return the destination from a search-engine redirect URL when present."""
+    if not isinstance(url, str):
+        return ""
+
+    candidate = url.strip()
+    parsed = urlsplit(candidate)
+    if parsed.path.rstrip("/") not in {"/url", "/link"}:
+        return candidate
+
+    params = parse_qs(parsed.query)
+    for key in ("q", "url", "u", "uddg"):
+        target = params.get(key, [""])[0].strip()
+        if urlsplit(target).scheme in {"http", "https"}:
+            return target
+    return candidate
+
+
+def _application_url(job: dict) -> str:
+    """Select the direct application URL, falling back to the job posting URL."""
+    return _unwrap_redirect_url(job.get("apply_url") or job.get("url") or "")
+
+
 def _value_from_mapping_or_object(source, *names):
     for name in names:
         if isinstance(source, dict) and source.get(name):
@@ -423,12 +447,14 @@ def _matches_apify_freshness_and_applicant_limits(item: dict, apify_cfg: dict) -
 
 
 def _normalize_apify_job(item: dict) -> dict | None:
-    url = _first_present(item, ["url", "jobUrl", "job_url", "link", "applyUrl", "apply_url"])
+    url = _unwrap_redirect_url(
+        _first_present(item, ["url", "jobUrl", "job_url", "link", "applyUrl", "apply_url"])
+    )
     title = _first_present(item, ["title", "jobTitle", "job_title", "position"])
     company = _first_present(item, ["companyName", "company", "company_name"], "LinkedIn")
     location = _first_present(item, ["location", "jobLocation", "job_location"], "LinkedIn")
     description = _first_present(item, ["description", "jobDescription", "job_description", "text"])
-    apply_url = _first_present(item, ["applyUrl", "apply_url"])
+    apply_url = _unwrap_redirect_url(_first_present(item, ["applyUrl", "apply_url"]))
 
     if not url or not title:
         return None
@@ -735,8 +761,9 @@ def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set, config: dict)
         resp = _fetch_with_ratelimit(tf, [careers_url], format="markdown", links=True)
         if resp and resp.results:
             links = resp.results[0].links
-            direct = [link for link in links if is_job_url(link) and link not in seen_urls]
-            ats_pages = list({link for link in links if is_ats_listing(link)})
+            normalized_links = {_unwrap_redirect_url(link) for link in links}
+            direct = [link for link in normalized_links if is_job_url(link) and link not in seen_urls]
+            ats_pages = list({link for link in normalized_links if is_ats_listing(link)})
             found_urls.update(direct)
             logger.debug(f"  [{company['name']}] Careers page: {len(direct)} direct job links, {len(ats_pages)} ATS listing pages")
 
@@ -746,8 +773,9 @@ def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set, config: dict)
                 ats_jobs = 0
                 for page_links in ats_link_map.values():
                     for link in page_links:
-                        if is_job_url(link) and link not in seen_urls:
-                            found_urls.add(link)
+                        normalized_link = _unwrap_redirect_url(link)
+                        if is_job_url(normalized_link) and normalized_link not in seen_urls:
+                            found_urls.add(normalized_link)
                             ats_jobs += 1
                 logger.debug(f"  [{company['name']}] ATS expansion: {ats_jobs} additional job links")
 
@@ -758,8 +786,9 @@ def discover_job_urls(tf: TinyFish, company: dict, seen_urls: set, config: dict)
             resp = tf.search.query(query, language="en")
             search_new = 0
             for r in resp.results:
-                if is_job_url(r.url) and r.url not in seen_urls:
-                    found_urls.add(r.url)
+                normalized_url = _unwrap_redirect_url(r.url)
+                if is_job_url(normalized_url) and normalized_url not in seen_urls:
+                    found_urls.add(normalized_url)
                     search_new += 1
             logger.debug(f"  [{company['name']}] Search: {len(resp.results)} results, {search_new} new job URLs")
             time.sleep(13)
@@ -899,7 +928,7 @@ def format_telegram_message(top_jobs: list[dict], date_str: str) -> str:
             f"📍 {job.get('location_remote', job['location'])}\n"
             f"🔧 {job.get('stack', 'N/A')}\n"
             f"✅ {job.get('reason', '')}\n"
-            f"<a href=\"{job['url']}\">Apply</a>\n"
+            f"<a href=\"{_application_url(job)}\">Apply</a>\n"
         )
     lines.append('Reply "apply to #N" to draft application.')
     return "\n".join(lines)
@@ -915,7 +944,7 @@ def format_discord_message(jobs: list[dict], date_str: str) -> str:
                 f"Location: {job.get('location_remote', job['location'])}",
                 f"Stack: {job.get('stack', 'N/A')}",
                 f"Reason: {job.get('reason', '')}",
-                f"[Apply]({job['url']})",
+                f"[Apply]({_application_url(job)})",
                 "",
             ]
         )
